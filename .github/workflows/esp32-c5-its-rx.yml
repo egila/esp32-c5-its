@@ -1,4 +1,4 @@
-name: PlatformIO CI
+name: esp32-c5-its-rx
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
     - name: setup python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        python-version: '3.11'
 
     - name: install platformio
       run: |
@@ -34,6 +34,6 @@ jobs:
     - name: create download
       uses: actions/upload-artifact@v4
       with:
-        name: firmware-binary
-        path: esp32-c5-its-rx/.pio/build/*/*.bin
+        name: esp32-c5-its-rx
+        path: esp32-c5-its-rx/.pio/build/*/firmware.bin
         retention-days: 30
