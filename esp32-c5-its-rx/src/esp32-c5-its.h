@@ -5,7 +5,11 @@
 #include "log-data.h"
 
 #if defined(RGB)
+# if defined(RGB_8)
+# define RGB_LED_GPIO 8
+# else
 # define RGB_LED_GPIO 27
+# endif
 #endif
 
 #if defined(LED)
@@ -29,7 +33,7 @@
 
 #define PRG_VER_MAJ 1
 #define PRG_VER_MIN 2
-#define PRG_VER_REV 0
+#define PRG_VER_REV 1
 #define GIT_REPO "https://github.com/MuellerA/esp32-c5-its"
 
 #if defined(GPS)
