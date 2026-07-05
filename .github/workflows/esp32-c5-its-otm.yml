@@ -3,12 +3,35 @@ name: esp32-c5-its-otm
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'esp32-c5-its-otm/**'
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'esp32-c5-its-otm/**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        arch: [raspi32, raspi64, ubuntu-x64]
+        include:
+          - arch: raspi32
+            compiler: arm-linux-gnueabihf-g++
+            pkg_arch: armhf
+            cross_compile: true
+          - arch: raspi64
+            compiler: aarch64-linux-gnu-g++
+            pkg_arch: arm64
+            cross_compile: true
+          - arch: ubuntu-x64
+            compiler: g++
+            pkg_arch: amd64
+            cross_compile: false
 
     defaults:
       run:
@@ -18,18 +41,46 @@ jobs:
     - name: checkout code
       uses: actions/checkout@v4
 
-    - name: install dependencies
+    - name: setup cross compile and dependencies
+      if: matrix.cross_compile == true
+      run: |
+        sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
+        sudo apt-get update
+        sudo apt-get install -y build-essential \
+          gcc-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
+          g++-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
+          libmosquitto-dev:${{ matrix.pkg_arch }} \
+          libmosquittopp-dev:${{ matrix.pkg_arch }} \
+          libssl-dev:${{ matrix.pkg_arch }}
+
+    - name: setup native dependencies
+      if: matrix.cross_compile == false
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libmosquitto-dev libmosquittopp-dev libssl-dev
 
     - name: build
-      run: make
+      run: make CXX=${{ matrix.compiler }}
 
-    - name: create zip
+    - name: upload tmp zip
       uses: actions/upload-artifact@v4
       with:
-        name: esp32-c5-its-otm
-        path: |
-          esp32-c5-its-otm/esp32-c5-its-otm
+        name: ${{ matrix.arch }}
+        path: esp32-c5-its-otm/esp32-c5-its-otm
+        retention-days: 1
+
+  merge-binaries:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: download tmp zips
+      uses: actions/download-artifact@v4
+      with:
+        path: esp32-c5-its-otm-combined
+
+    - name: Upload combined ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32-c5-its-otm-combined
+        path: esp32-c5-its-otm-combined/
         retention-days: 30

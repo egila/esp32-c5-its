@@ -3,8 +3,14 @@ name: esp32-c5-its-rx
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'esp32-c5-its-rx/**'
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'esp32-c5-its-rx/**'
 
 jobs:
   build:
