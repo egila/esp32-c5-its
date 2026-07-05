@@ -47,7 +47,7 @@ jobs:
       run: |
         sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
         if ls /etc/apt/sources.list.d/ubuntu*.sources >/dev/null 2>&1; then
-          sudo sed -i 's/Architectures: /Architectures: amd64 /g' /etc/apt/sources.list.d/ubuntu*.sources
+          sudo sed -i 's/Architectures: .*/Architectures: amd64 /g' /etc/apt/sources.list.d/ubuntu*.sources
         fi
         CODENAME=$(lsb_release -cs)
         echo -e "Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports/\nSuites: $CODENAME $CODENAME-updates $CODENAME-backports $CODENAME-security\nComponents: main restricted universe multiverse\nArchitectures: ${{ matrix.pkg_arch }}" | sudo tee /etc/apt/sources.list.d/ubuntu-ports.sources
