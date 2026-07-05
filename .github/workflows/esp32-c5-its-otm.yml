@@ -19,16 +19,16 @@ jobs:
 
     strategy:
       matrix:
-        arch: [raspi32, raspi64, ubuntu-x64]
+        arch: [ubuntu-x64] # raspi32, raspi64
         include:
-          - arch: raspi32
-            compiler: arm-linux-gnueabihf-g++
-            pkg_arch: armhf
-            cross_compile: true
-          - arch: raspi64
-            compiler: aarch64-linux-gnu-g++
-            pkg_arch: arm64
-            cross_compile: true
+    #      - arch: raspi32
+    #        compiler: arm-linux-gnueabihf-g++
+    #        pkg_arch: armhf
+    #        cross_compile: true
+    #      - arch: raspi64
+    #        compiler: aarch64-linux-gnu-g++
+    #        pkg_arch: arm64
+    #        cross_compile: true
           - arch: ubuntu-x64
             compiler: g++
             pkg_arch: amd64
@@ -42,22 +42,22 @@ jobs:
     - name: checkout code
       uses: actions/checkout@v4
 
-    - name: setup cross compile and dependencies
-      if: matrix.cross_compile == true
-      run: |
-        sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
-        if ls /etc/apt/sources.list.d/ubuntu*.sources >/dev/null 2>&1; then
-          sudo sed -i 's/Architectures: .*/Architectures: amd64 /g' /etc/apt/sources.list.d/ubuntu*.sources
-        fi
-        CODENAME=$(lsb_release -cs)
-        echo -e "Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports/\nSuites: $CODENAME $CODENAME-updates $CODENAME-backports $CODENAME-security\nComponents: main restricted universe multiverse\nArchitectures: ${{ matrix.pkg_arch }}" | sudo tee /etc/apt/sources.list.d/ubuntu-ports.sources
-        sudo apt-get update
-        sudo apt-get install -y build-essential \
-          gcc-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
-          g++-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
-          libmosquitto-dev:${{ matrix.pkg_arch }} \
-          libmosquittopp-dev:${{ matrix.pkg_arch }} \
-          libssl-dev:${{ matrix.pkg_arch }}
+    #- name: setup cross compile and dependencies
+    #  if: matrix.cross_compile == true
+    #  run: |
+    #    sudo dpkg --add-architecture ${{ matrix.pkg_arch }}
+    #    if ls /etc/apt/sources.list.d/ubuntu*.sources >/dev/null 2>&1; then
+    #      sudo sed -i 's/Architectures: .*/Architectures: amd64 /g' /etc/apt/sources.list.d/ubuntu*.sources
+    #    fi
+    #    CODENAME=$(lsb_release -cs)
+    #    echo -e "Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports/\nSuites: $CODENAME $CODENAME-updates $CODENAME-backports $CODENAME-security\nComponents: main restricted universe multiverse\nArchitectures: ${{ matrix.pkg_arch }}" | sudo tee /etc/apt/sources.list.d/ubuntu-ports.sources
+    #    sudo apt-get update
+    #    sudo apt-get install -y build-essential \
+    #      gcc-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
+    #      g++-${{ matrix.compiler == 'aarch64-linux-gnu-g++' && 'aarch64-linux-gnu' || 'arm-linux-gnueabihf' }} \
+    #      libmosquitto-dev:${{ matrix.pkg_arch }} \
+    #      libmosquittopp-dev:${{ matrix.pkg_arch }} \
+    #      libssl-dev:${{ matrix.pkg_arch }}
 
     - name: setup native dependencies
       if: matrix.cross_compile == false
