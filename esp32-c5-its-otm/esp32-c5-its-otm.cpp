@@ -165,14 +165,18 @@ int main(int argc, char *argv[])
   Parser parser(queueTty, queueIts) ;
   Writer writer(queueIts) ;
 
+  int exitCode = 0 ;
   if (!reader.start() ||
       !parser.start() ||
       !writer.start())
+  {
+    exitCode = 1 ;
     shutdown = true ;
+  }
 
   reader.stop() ;
   parser.stop() ;
   writer.stop() ;
 
-  return 0 ;
+  return exitCode ;
 }
