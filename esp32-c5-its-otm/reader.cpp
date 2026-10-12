@@ -13,6 +13,15 @@ bool Reader::initPort()
       return false;
   }
 
+  // one bridge per receiver: do not reset the board under another instance
+  if (flock(_port, LOCK_EX | LOCK_NB) != 0 && errno == EWOULDBLOCK) {
+      std::cerr << "tty " << options._ttyName << " is in use by another process" << std::endl;
+      close(_port);
+      _port = -1;
+      return false;
+  }
+  ioctl(_port, TIOCEXCL);
+
   struct termios tty;
   if (tcgetattr(_port, &tty) != 0) {
       std::cerr << "tcgetattr failed: " << strerror(errno) << std::endl;
