@@ -35,7 +35,7 @@ QueueHandle_t sdcard_queue ;
 
 void sdcard_writer_task(void*)
 {
-  struct LogData log_data;
+  static struct LogData log_data; // single writer task; 2 KB is too much for its stack
 
   while (1)
   {
