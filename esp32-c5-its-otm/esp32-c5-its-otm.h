@@ -113,6 +113,10 @@ private:
   QueueTty &_queueTty ;
   QueueIts &_queueIts ;
   std::thread _thread ;
+  std::thread _ticker ;
+  std::mutex _lastMutex ;
+  Header _last ;
+  uint32_t _count{0} ;
 } ;
 
 class Writer : mosqpp::mosquittopp

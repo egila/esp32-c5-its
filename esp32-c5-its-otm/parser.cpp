@@ -68,8 +68,11 @@ bool Parser::start()
       if (!read(_queueTty, header.body_size, body))
         return ;
 
-      std::cout << "\r\033[2K" << (uint32_t)header.pkt_type << " " << header.timestamp_us << " " << header.body_size ;
-      std::cout.flush() ;
+      {
+        std::lock_guard<std::mutex> lock(_lastMutex) ;
+        _last = header ;
+        ++_count ;
+      }
 
       switch (header.pkt_type)
       {
@@ -100,6 +103,26 @@ bool Parser::start()
     }
    }) ;
 
+  _ticker = std::thread([this]()
+  {
+    uint32_t count{0} ;
+
+    while (!shutdown)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(200)) ;
+
+      std::unique_lock<std::mutex> lock(_lastMutex) ;
+      if (_count == count)
+        continue ;
+      count = _count ;
+      Header header = _last ;
+      lock.unlock() ;
+
+      std::cout << "\r\033[2K" << (uint32_t)header.pkt_type << " " << header.timestamp_us << " " << header.body_size ;
+      std::cout.flush() ;
+    }
+  }) ;
+
   return true ;
 }
 
@@ -107,4 +130,6 @@ void Parser::stop()
 {
   if (_thread.joinable())
     _thread.join() ;
+  if (_ticker.joinable())
+    _ticker.join() ;
 }
