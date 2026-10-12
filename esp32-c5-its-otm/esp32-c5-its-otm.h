@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <sys/select.h>
 #include <cstring>
 #include <cstdint>
 #include <csignal>
@@ -96,6 +97,7 @@ public:
 
 private:
   bool initPort() ;
+  void reopenPort() ;
 
   QueueTty &_queue ;
   std::thread _thread ;
