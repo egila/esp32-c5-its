@@ -166,7 +166,8 @@ void usb_transmitter_task(void *)
       {
         usb_serial_jtag_write_bytes(magic, sizeof(magic), portMAX_DELAY);
         usb_serial_jtag_write_bytes(&data.header, sizeof(data.header), portMAX_DELAY);
-        usb_serial_jtag_write_bytes(&data.body, data.header.body_size, portMAX_DELAY);
+        if (data.header.body_size)
+          usb_serial_jtag_write_bytes(&data.body, data.header.body_size, portMAX_DELAY);
       }
     }
   }
