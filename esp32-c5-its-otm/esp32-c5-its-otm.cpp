@@ -68,6 +68,7 @@ void usage()
     << "  --tls                     tls" << ((options._tls == 1) ? " (default)\n" : "\n")
     << "  --tls-unsecure            tls but no verification" << ((options._tls == 2) ? " (default)\n" : "\n")
     << "  --tls-off                 no tls" << ((options._tls == 0) ? " (default)\n" : "\n")
+    << "  --cafile <file>           tls ca file (default first readable of /etc/ssl/certs/ca-certificates.crt, /etc/pki/tls/certs/ca-bundle.crt, /etc/ssl/ca-bundle.pem, /etc/ssl/cert.pem)\n"
     ;
 }
 
@@ -134,6 +135,15 @@ int main(int argc, char *argv[])
     else if (arg == "--tls-off")
     {
       options._tls = 0 ;
+    }
+    else if (arg == "--cafile")
+    {
+      if (++iArg == argc)
+      {
+        usage() ;
+        return 1 ;
+      }
+      options._caFile = argv[iArg] ;
     }
     else
     {
