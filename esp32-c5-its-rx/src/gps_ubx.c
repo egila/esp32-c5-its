@@ -473,7 +473,10 @@ bool gps_ubx_init()
   ESP_LOGI(TAG, "set protocol ubx") ;
   frame.cfg_prt.inProtoMask = 0x01 ;
   frame.cfg_prt.outProtoMask = 0x01 ;
-  if (!gps_ubx_cmd_set(&frame))
+  // a lost or corrupted ack does not mean the receiver ignored the
+  // command, so poll the port config again before giving up
+  if (!gps_ubx_cmd_set(&frame) &&
+      (!gps_ubx_baudrate_try(115200, &frame) || (frame.cfg_prt.outProtoMask != 0x01)))
   {
     ESP_LOGW(TAG, "set protocol failed") ;
     info_log_data("ubx: not found\n") ;
