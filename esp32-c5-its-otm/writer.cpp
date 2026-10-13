@@ -106,6 +106,12 @@ std::atomic<bool> shutdownWriter ;
 
 void Writer::on_connect(int rc)
 {
+  if (rc != 0)
+  {
+    std::cerr << "mqtt connect refused: " << mosqpp::connack_string(rc) << std::endl ;
+    return ;
+  }
+
   if (options._mqttTopicStatus.size())
     publish(nullptr, options._mqttTopicStatus.c_str(), static_cast<int>(statusOnline.size()), statusOnline.c_str(), 1, true) ;
 
@@ -138,6 +144,9 @@ void Writer::on_connect(int rc)
 
 void Writer::on_disconnect(int rc)
 {
+  if (rc != 0)
+    std::cerr << "mqtt disconnected: " << mosqpp::strerror(rc) << std::endl ;
+
   shutdownWriter = true ;
   _queueIts.push({}) ;
 }
