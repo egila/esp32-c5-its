@@ -130,6 +130,7 @@ apt install libmosquitto-dev libmosquittopp-dev libssl-dev
 ```txt
 make
 ```
+Extra compiler and linker flags can be passed, e.g. Homebrew paths on macOS: ```make CPPFLAGS="-I$(brew --prefix)/include -I$(brew --prefix openssl@3)/include" LDFLAGS="-L$(brew --prefix)/lib"```
 ### Usage
 For a your individual OTM node id use option ```-mi```. The last 6 digits of the Linux machine id (/etc/machine-id) will be appended for uniqueness. If no ```-mt``` is given the topic path will be updated accordingly. E.g. ```-mi myNode``` will produce id ```myNode-ABCDEF``` and topic ```/its/myNode-ABCDEF/packet```.
 
