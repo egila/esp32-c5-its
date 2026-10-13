@@ -213,14 +213,17 @@ void init_version_log_data(struct LogData *data)
 
 static char info_log_data_buff[1024] ;
 static char *info_log_data_insert = info_log_data_buff ;
-void info_log_data(char *format, ...)
+void info_log_data(const char *format, ...)
 {
   va_list args;
   va_start(args, format) ;
 
-  info_log_data_insert += vsnprintf(info_log_data_insert,
-                                    sizeof(info_log_data_buff) - (info_log_data_insert - info_log_data_buff),
-                                    format, args) ;
+  size_t room = sizeof(info_log_data_buff) - (info_log_data_insert - info_log_data_buff) ;
+  int n = vsnprintf(info_log_data_insert, room, format, args) ;
+  va_end(args) ;
+
+  if (n > 0)
+    info_log_data_insert += ((size_t)n < room) ? (size_t)n : room - 1 ;
 }
 
 void init_info_log_data(struct LogData *data)
