@@ -151,8 +151,8 @@ void gps_nmea_read_task(void *pvParameters)
 
               if (comma[8] + 1 != comma[9])
               {
-                float alt = atof(line_buffer + comma[8] + 1) ;
-                gps_data.altitudeMSL = (int32_t)(alt * 10);
+                double alt = atof(line_buffer + comma[8] + 1) ;
+                gps_data.altitudeMSL = (int32_t)lround(alt * 1000.0) ; // log-data.h: m * 10^3 (mm)
               }
 
               gps_pos_active = 1 ;
