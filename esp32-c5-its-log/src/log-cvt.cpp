@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
+#include <cerrno>
 
 #include <iostream>
 #include <vector>
@@ -144,9 +146,12 @@ void usage()
   std::cout
     << "usage: log-cvt [-p|-b] [-u] <log-file> ...\n"
     << "options:\n"
-    << "  -p    pcapng file (default)\n"
+    << "  -p    pcapng file\n"
     << "  -b    vector blf file\n"
-    << "  -u    source is usb log with magic bytes (default sd log w/o magic bytes)\n" ;
+    << "  -u    source is usb log with magic bytes (default sd log w/o magic bytes)\n"
+    << "without -p or -b only the record counts are printed\n"
+    << "exit status 1 if a file cannot be opened, read, converted or written\n"
+    << "or contains no log records, else 0\n" ;
 }
 
 int main(int argc, char *argv[])
@@ -155,6 +160,7 @@ int main(int argc, char *argv[])
   enum class Type { none, pcapng, blf } ;
   Type type{Type::none} ;
   int isUsbLog{0} ;
+  int rc{0} ;
 
   for (argi = 1 ; argi < argc && argv[argi][0] == '-' ; ++argi)
   {
@@ -185,7 +191,9 @@ int main(int argc, char *argv[])
     FILE *log = fopen(logName.c_str(), "rb") ;
     if (!log)
     {
-      std::cerr << "open log " << logName << " failed\n" ;
+      const char *err = strerror(errno) ;
+      std::cerr << "open log " << logName << " failed: " << err << "\n" ;
+      rc = 1 ;
       continue ;
     }
 
@@ -205,6 +213,7 @@ int main(int argc, char *argv[])
     if (!writer->open(logName))
     {
       fclose(log) ;
+      rc = 1 ;
       continue ;
     }
 
@@ -219,6 +228,17 @@ int main(int argc, char *argv[])
         break ;
     }
 
+    if (ferror(log) || !feof(log))
+    {
+      std::cerr << "conversion of " << logName << " stopped at offset " << ftell(log) << "\n" ;
+      rc = 1 ;
+    }
+    else if (count.time + count.its + count.gps + count.info + count.version == 0)
+    {
+      std::cerr << "no log records found in " << logName << " (wrong -u option?)\n" ;
+      rc = 1 ;
+    }
+
     std::cout
       << "\nCount:\n"
       // << "time: " << count.time << "\n"
@@ -227,8 +247,12 @@ int main(int argc, char *argv[])
       << "info: " << count.info << "\n"
       << "version: " << count.version << "\n" ;
 
-    writer->close() ;
+    if (type == Type::none)
+      std::cout << "\nno output file written (use -p or -b)\n" ;
+
+    if (!writer->close())
+      rc = 1 ;
     fclose(log) ;
   }
-  return 0 ;
+  return rc ;
 }
