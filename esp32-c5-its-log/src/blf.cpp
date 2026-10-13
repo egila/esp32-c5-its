@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <chrono>
 
 #include "log-cvt.h"
 
@@ -12,15 +13,20 @@ void BlfWriter::timeReset()
 
 void BlfWriter::utcTimeToBlfTime(uint64_t utcTimeS, Vector::BLF::SYSTEMTIME &blfTime)
 {
-  struct tm *t = gmtime((time_t*)&utcTimeS) ;
+  // no gmtime(): time_t is 32 bit on some hosts, dates after 2038 would wrap
+  using namespace std::chrono ;
+  sys_seconds t{seconds{utcTimeS}} ;
+  sys_days d = floor<days>(t) ;
+  year_month_day ymd{d} ;
+  hh_mm_ss<seconds> hms{t - d} ;
 
-  blfTime.year = t->tm_year + 1900 ;
-  blfTime.month = t->tm_mon + 1 ;
-  blfTime.day = t->tm_mday ;
-  blfTime.dayOfWeek = t->tm_wday ;
-  blfTime.hour = t->tm_hour;
-  blfTime.minute = t->tm_min;
-  blfTime.second = t->tm_sec;
+  blfTime.year = (int)ymd.year() ;
+  blfTime.month = (unsigned)ymd.month() ;
+  blfTime.day = (unsigned)ymd.day() ;
+  blfTime.dayOfWeek = weekday{d}.c_encoding() ;
+  blfTime.hour = hms.hours().count();
+  blfTime.minute = hms.minutes().count();
+  blfTime.second = hms.seconds().count();
   blfTime.milliseconds = 0;
 }
 

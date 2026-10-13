@@ -3,8 +3,12 @@
 
 #include <iostream>
 #include <vector>
+#include <sys/types.h>
 
 #include "log-cvt.h"
+
+// with a 32 bit off_t, fopen() fails on logs over 2 GiB
+static_assert(sizeof(off_t) == 8, "build with -D_FILE_OFFSET_BITS=64") ;
 
 
 Writer::Writer() {}
