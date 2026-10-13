@@ -17,6 +17,9 @@ on:
       - '.github/workflows/esp32-c5-its-otm.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,6 +48,8 @@ jobs:
     steps:
     - name: checkout code
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     #- name: setup cross compile and dependencies
     #  if: matrix.cross_compile == true
