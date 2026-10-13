@@ -41,5 +41,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: esp32-c5-its-rx
-        path: esp32-c5-its-rx/.pio/build/*/firmware.bin
+        path: |
+          esp32-c5-its-rx/.pio/build/*/firmware.bin
+          esp32-c5-its-rx/.pio/build/*/firmware.factory.bin
         retention-days: 30
