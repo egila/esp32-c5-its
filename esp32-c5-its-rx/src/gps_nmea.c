@@ -226,7 +226,8 @@ void gps_nmea_read_task(void *pvParameters)
               line_buffer[i] = 0 ;
             }
           }
-          if ((nComma > 9) && ((comma[8] + 6 + 1) == comma[9]))
+          // status: A = valid, V = void (no fix, date may be a placeholder such as 060180)
+          if ((nComma > 9) && ((comma[8] + 6 + 1) == comma[9]) && (line_buffer[comma[1] + 1] == 'A'))
           {
             date_at_last_rmc = atoi(line_buffer + comma[8]+1) ;
 
