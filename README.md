@@ -124,6 +124,35 @@ options
   --tls-off                 no tls
 ```
 
+### Running as a service
+The ttyACM number of the receiver can change when it is unplugged and plugged in again. For unattended operation use its stable path in ```/dev/serial/by-id/``` (```ls /dev/serial/by-id/``` shows it) instead:
+
+```txt
+-t /dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_<serial>-if00
+```
+
+The bridge resets the receiver each time it opens the port, so every start or restart of the bridge also restarts the receiver. Run only one bridge per receiver and do not open its port with other programs while the bridge is running. With several receivers on one host give each bridge its own ```-mi```, otherwise they all use the same MQTT id and topic.
+
+Example systemd unit ```/etc/systemd/system/esp32-c5-its-otm.service```, with the bridge copied to ```/usr/local/bin```. ```<user>``` needs access to the tty, on most distributions by being a member of the ```dialout``` group (```sudo usermod -aG dialout <user>```).
+
+```ini
+[Unit]
+Description=ESP32-C5 ITS to Open Traffic Map bridge
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=<user>
+ExecStart=/usr/local/bin/esp32-c5-its-otm -t /dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_<serial>-if00 -mi <node>
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```Restart=always``` restarts the bridge whenever it exits, e.g. when the receiver or the network is not ready yet at boot, and ```RestartSec=10``` keeps it from resetting the receiver in a tight loop. Enable and start it with ```sudo systemctl enable --now esp32-c5-its-otm```, show its output with ```journalctl -u esp32-c5-its-otm```.
+
 ## Log File Format
 
 Integer are stored little endian (ESP32 native).
