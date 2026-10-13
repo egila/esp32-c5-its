@@ -5,10 +5,17 @@
 #include "log-cvt.h"
 
 
+// The log time is ESP uptime until a GPS fix, then UTC.
+static const uint64_t utcStartUs = 1000000000000000 ; // 2001-09-09, uptime never gets there
+static const uint64_t utcEndUs   = 4102444800000000 ; // 2100-01-01, later log times are corrupt
+
 void BlfWriter::timeReset()
 {
   _timeFirst = true ;
+  _timeUtc = false ;
   _timeMeasurementStartUs = 0 ;
+  _timeOffsetUs = 0 ;
+  _timeLastUs = 0 ;
 }
 
 void BlfWriter::utcTimeToBlfTime(uint64_t utcTimeS, Vector::BLF::SYSTEMTIME &blfTime)
@@ -30,22 +37,51 @@ void BlfWriter::utcTimeToBlfTime(uint64_t utcTimeS, Vector::BLF::SYSTEMTIME &blf
   blfTime.milliseconds = 0;
 }
 
+// BLF object times never step back. UTC (after a GPS fix) is used as is.
+// After a device restart (uptime steps back or follows UTC) uptime continues
+// from the latest object time. No offset is carried from one time base to
+// the other.
 uint64_t BlfWriter::timeNs(uint64_t timeUs)
 {
+  if (timeUs >= utcEndUs) // e.g. a record cut by a device restart
+  {
+    std::cerr << "corrupt log time " << timeUs << " us, using the latest object time\n" ;
+    return (_timeLastUs - _timeMeasurementStartUs) * 1000 ;
+  }
+
   uint64_t timeS = timeUs / 1000000 ;
+  bool utc = timeUs >= utcStartUs ;
 
   if (_timeFirst)
   {
     _timeMeasurementStartUs = timeS * 1000000 ;
+    _timeLastUs = timeUs ;
 
     utcTimeToBlfTime(timeS, _blf.fileStatistics.measurementStartTime) ;
 
     _timeFirst = false ;
   }
+  else if (utc) // GPS fix
+  {
+    _timeOffsetUs = 0 ;
+  }
+  else if (_timeUtc || timeUs + _timeOffsetUs + 1000000 < _timeLastUs) // device restart
+  {
+    _timeOffsetUs = _timeLastUs ;
+    std::cerr
+      << "log time steps back to " << timeUs
+      << " us (device restart?), blf time continues from the latest object\n" ;
+  }
+  _timeUtc = utc ;
 
-  utcTimeToBlfTime(timeS, _blf.fileStatistics.lastObjectTime) ;
+  uint64_t blfUs = timeUs + _timeOffsetUs ;
+  if (blfUs < _timeLastUs) // small step back, e.g. GPS and ITS records logged out of order
+    blfUs = _timeLastUs ;
+  _timeLastUs = blfUs ;
 
-  return (timeUs - _timeMeasurementStartUs) * 1000 ;
+  utcTimeToBlfTime(blfUs / 1000000, _blf.fileStatistics.lastObjectTime) ;
+
+  return (blfUs - _timeMeasurementStartUs) * 1000 ;
 }
 
 BlfWriter::BlfWriter()

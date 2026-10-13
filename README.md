@@ -79,7 +79,7 @@ An SD card can be connected for logging data. Logging to SD card is started/stop
 
 Linux Converter for the recorded data, it converts to
 - Wireshark PCAPNG: Generated file name is source name + ".pcapng" extension. Optional GPS data is added as a Beacon message with source address { 0xaa 0xaa 0xaa 0xaa 0xaa 0xaa }.
-- CANoe/CANalyzer BLF: Generated file name is source name + ".blf" extension. Optional GPS data is added as GNSS system variable.
+- CANoe/CANalyzer BLF: Generated file name is source name + ".blf" extension. Optional GPS data is added as GNSS system variable. BLF object times never step back: after a device restart within one USB log, ESP uptime continues from the latest object time until a GPS fix provides UTC time again. The PCAPNG file keeps the raw log times.
 
 ### Dependencies
  - [fpcap](https://github.com/fpcap/fpcap)
