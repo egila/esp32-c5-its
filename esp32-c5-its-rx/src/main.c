@@ -364,7 +364,16 @@ void app_main()
 
   gpio_init() ;
 
-  nvs_flash_init();
+  // the app stores nothing in NVS, only PHY calibration and Wi-Fi defaults
+  // live there and are regenerated, so erasing it is safe
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+  {
+    ESP_LOGW(TAG, "nvs_flash_init: %s, erasing NVS", esp_err_to_name(ret));
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
   esp_netif_init();
 
 #if defined(RGB) || defined(LED)
