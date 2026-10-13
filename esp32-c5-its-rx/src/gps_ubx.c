@@ -267,6 +267,7 @@ bool gps_ubx_cmd_poll(gps_ubx_frame_t *tx, gps_ubx_frame_t *rx)
       ESP_LOGI(TAG, "cmd poll ignore: %02x %02x %02x", rxTry.clsId, rxTry.msgId, rxTry.len) ;
     }
   }
+  return found ;
 }
 
 bool gps_ubx_cmd_set(gps_ubx_frame_t *tx)
@@ -288,6 +289,7 @@ bool gps_ubx_cmd_set(gps_ubx_frame_t *tx)
       return (rxTry.msgId == 0x01) ; // ack
     }
   }
+  return false ;
 }
 
 void recv_time(frame_nav_timeutc_t *nav_timeutc)
@@ -419,10 +421,9 @@ bool gps_ubx_baudrate_try(uint32_t baud, gps_ubx_frame_t *rx)
   ESP_ERROR_CHECK(uart_set_baudrate(UART_PORT_NUM, baud)) ;
   ESP_ERROR_CHECK(uart_flush(UART_PORT_NUM)) ;
 
-  gps_ubx_frame_t tx = { 6, 0, 0 } ;
+  gps_ubx_frame_t tx = { .clsId = 0x06, .msgId = 0x00, .len = 0 } ;
 
-  if (!gps_ubx_cmd_poll(&tx, rx))
-    return false ;
+  return gps_ubx_cmd_poll(&tx, rx) ;
 }
 
 bool gps_ubx_baudrate_try_all(gps_ubx_frame_t *rx)
