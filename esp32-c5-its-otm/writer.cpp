@@ -63,7 +63,7 @@ void Writer::on_connect(int rc)
     std::vector<uint8_t> data ;
 
     _queueIts.clear() ;
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       if (!_queueIts.pop(data))
         continue ;

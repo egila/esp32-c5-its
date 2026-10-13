@@ -54,7 +54,7 @@ bool Parser::start()
     Header header ;
     std::vector<uint8_t> body ;
 
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       if (!skip_magic(_queueTty))
         return ;

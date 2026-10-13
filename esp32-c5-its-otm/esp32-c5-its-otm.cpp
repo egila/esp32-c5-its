@@ -1,13 +1,13 @@
 #include "esp32-c5-its-otm.h"
 
-std::atomic<bool> shutdown(false) ;
+std::atomic<bool> shutdownRequested(false) ;
 
 void signal_handler(int signal)
 {
   if (signal == SIGINT)
   {
     std::cout << "\nSIGINT received. Exiting ...\n" ;
-    shutdown = true ;
+    shutdownRequested = true ;
   }
 }
 
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
   if (!reader.start() ||
       !parser.start() ||
       !writer.start())
-    shutdown = true ;
+    shutdownRequested = true ;
 
   reader.stop() ;
   parser.stop() ;

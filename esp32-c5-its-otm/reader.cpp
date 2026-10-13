@@ -75,7 +75,7 @@ bool Reader::start()
   _thread = std::thread([this]()
   {
     uint8_t buff[256];
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       ssize_t nBuff = read(_port, &buff, sizeof(buff));
 
