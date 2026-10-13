@@ -57,6 +57,16 @@ static void calc_offset()
   }
 }
 
+// Match the sentence type (e.g. "GGA") from any talker ($GP, $GN, $GL, $GA, $BD, ...).
+// len > 6: only look at bytes of the current line; line_buffer is not cleared, so
+// bytes past len can be left over from an earlier, longer sentence.
+// line[1] != 'P': skip proprietary sentences ($P + maker id), e.g. $PGRMC is not RMC.
+static bool nmea_is_type(const char *line, int len, const char *type)
+{
+  return (len > 6) && (line[0] == '$') && (line[1] != 'P') &&
+         (strncmp(line + 3, type, 3) == 0) && (line[6] == ',') ;
+}
+
 void gps_nmea_read_task(void *pvParameters)
 {
   uint8_t data;
@@ -81,7 +91,7 @@ void gps_nmea_read_task(void *pvParameters)
         line_buffer[line_idx] = 0;
         ESP_LOGI(TAG, "gps %s", line_buffer) ;
 
-        if (strncmp(line_buffer, "$GPGGA", 6) == 0)
+        if (nmea_is_type(line_buffer, line_idx, "GGA"))
         {
           // Format: $GPGGA,utc,lat,lat dir,lon,lon dir,quality,# sats,hdop,alt,a-units,undulation,u-units,age,stn ID,*xx
           //               0   1   2       3   4       5       6      7    8   9       A          B       C   D      E
@@ -163,7 +173,7 @@ void gps_nmea_read_task(void *pvParameters)
             }
           }
         }
-        else if (strncmp(line_buffer, "$GPRMC", 6) == 0 || strncmp(line_buffer, "$GNRMC", 6) == 0)
+        else if (nmea_is_type(line_buffer, line_idx, "RMC"))
         {
           // Format: $GPRMC,time,status,lat,N,lon,E,spd,cog,date,mv,mvE,mode*cs
           //               0    1      2   3 4   5 6   7   8    9  A   B
