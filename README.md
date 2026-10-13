@@ -93,6 +93,9 @@ options:
   -p    pcapng file
   -b    vector blf file
   -u    source is usb log with magic bytes (default sd log w/o magic bytes)
+without -p or -b only the record counts are printed
+exit status 1 if a file cannot be opened, read, converted or written
+or contains no log records, else 0
 ```
 
 ## ESP32-C5-ITS-OTM (Open Traffic Map)
