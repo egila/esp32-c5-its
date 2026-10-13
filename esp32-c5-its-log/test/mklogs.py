@@ -44,6 +44,13 @@ def with_unknown_type(recs):
   return recs
 
 
+def cut(size, keep, time_us):
+  # an ITS record with a size byte body, cut by a reset after keep bytes
+  # of the body
+  return MAGIC + record(ITS, bytes(i & 0xff for i in range(size)),
+                        time_us)[:12 + keep]
+
+
 def main():
   out = sys.argv[1] if len(sys.argv) > 1 else '.'
   files = {
@@ -57,6 +64,14 @@ def main():
     # magic found overlaps the real one
     'overlap.usb': b'\x12\x34' + MAGIC[:3] + usb(session(1, 10)),
     'unknown-type.usb': BOOT_TEXT + usb(with_unknown_type(session(1, 2))),
+    # reset while an ITS record was sent: the boot text and the first
+    # records after the reset lie inside its claimed body (the capture
+    # starts after the version, info and time records)
+    'cut-record.usb': (usb(session(1, 10)[3:]) + cut(900, 100, 1011000) +
+                       BOOT_TEXT + usb(session(2, 11))),
+    # the same near the end of the capture: the claimed body runs past it
+    'cut-record-end.usb': (usb(session(1, 1)) + cut(1500, 100, 1002000) +
+                           BOOT_TEXT + usb(session(2, 2))),
   }
   for name, data in files.items():
     with open(os.path.join(out, name), 'wb') as f:
