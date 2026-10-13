@@ -22,6 +22,9 @@ static const char *TAG = "ESP32-C5-ITS gps";
 
 volatile bool gps_time_active ;
 volatile bool gps_pos_active ;
+volatile uint32_t gps_pos_time_ms ; // esp_timer time of the last position update
+
+#define GPS_POS_MAX_AGE_MS 2500 // older positions are not logged
 
 
 #define GPS_BUF_SIZE 1024
@@ -57,6 +60,10 @@ void gps_log_data(void *pvParameters)
   struct LogData data;
 
   int64_t current_time = esp_timer_get_time();
+
+  // receiver gone quiet: do not keep logging its last position
+  if (gps_pos_active && ((uint32_t)(current_time / 1000) - gps_pos_time_ms > GPS_POS_MAX_AGE_MS))
+    gps_pos_active = 0 ;
 
   if (gps_pos_active)
   {

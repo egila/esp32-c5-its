@@ -5,6 +5,7 @@
 extern volatile uint8_t gps_recv_time ;
 
 extern volatile struct Gps gps_data ;
+extern volatile uint32_t gps_pos_time_ms ;
 
 extern volatile int64_t sys_tick_at_last_pps ;
 

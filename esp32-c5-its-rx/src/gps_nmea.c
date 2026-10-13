@@ -155,6 +155,7 @@ void gps_nmea_read_task(void *pvParameters)
                 gps_data.altitudeMSL = (int32_t)(alt * 10);
               }
 
+              gps_pos_time_ms = (uint32_t)(esp_timer_get_time() / 1000) ;
               gps_pos_active = 1 ;
             }
             else

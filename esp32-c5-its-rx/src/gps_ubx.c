@@ -341,6 +341,7 @@ void recv_pos()
     gps_data.altitudeMSL = last_nav_posllh.hMSL ;
     gps_data.speed = last_nav_velned.gSpeed ;
     gps_data.heading = last_nav_velned.heading ;
+    gps_pos_time_ms = (uint32_t)(esp_timer_get_time() / 1000) ;
     gps_pos_active = 1 ;
   }
   else
