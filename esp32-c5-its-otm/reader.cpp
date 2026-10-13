@@ -1,6 +1,6 @@
 #include "esp32-c5-its-otm.h"
 
-Reader::Reader(QueueTty &queue) : _queue(queue)
+Reader::Reader(QueueTty &queue) : _queue(queue), _port(-1)
 {
 }
 
@@ -17,6 +17,7 @@ bool Reader::initPort()
   if (tcgetattr(_port, &tty) != 0) {
       std::cerr << "tcgetattr failed: " << strerror(errno) << std::endl;
       close(_port);
+      _port = -1;
       return false;
   }
 
@@ -34,6 +35,7 @@ bool Reader::initPort()
   {
     std::cerr << "tcsetattr failed: " << strerror(errno) << std::endl;
     close(_port);
+    _port = -1;
     return false;
   }
 
@@ -67,6 +69,24 @@ bool Reader::initPort()
   return true ;
 }
 
+void Reader::reopenPort()
+{
+  close(_port) ;
+  _port = -1 ;
+  _queue.clear() ;
+
+  while (!shutdown)
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(1)) ;
+
+    if (!shutdown && (access(options._ttyName.c_str(), F_OK) == 0) && initPort())
+    {
+      std::cerr << "tty " << options._ttyName << " reopened" << std::endl ;
+      return ;
+    }
+  }
+}
+
 bool Reader::start()
 {
   if (!initPort())
@@ -74,14 +94,45 @@ bool Reader::start()
 
   _thread = std::thread([this]()
   {
+    auto lost = [this](const char *reason, int err)
+    {
+      std::cerr << "\ntty " << options._ttyName << " lost: " << reason ;
+      if (err)
+        std::cerr << ": " << strerror(err) ;
+      std::cerr << std::endl ;
+      reopenPort() ;
+    } ;
+
     uint8_t buff[256];
     while (!shutdown)
     {
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(_port, &fds);
+      struct timeval timeout = { 1, 0 };
+
+      int nSel = select(_port + 1, &fds, nullptr, nullptr, &timeout);
+
+      if (nSel < 0) {
+        if (errno != EINTR)
+          lost("select failed", errno) ;
+        continue;
+      }
+
+      if (nSel == 0)
+        continue;
+
       ssize_t nBuff = read(_port, &buff, sizeof(buff));
 
+      if (nBuff == 0) {
+        lost("hangup", 0) ;
+        continue;
+      }
+
       if (nBuff < 0) {
-        std::cerr << "read failed: " << strerror(errno) << std::endl;
-        break;
+        if ((errno != EINTR) && (errno != EAGAIN))
+          lost("read failed", errno) ;
+        continue;
       }
 
       for (ssize_t iBuff = 0; iBuff < nBuff; ++iBuff) {
@@ -98,5 +149,6 @@ void Reader::stop()
   if (_thread.joinable())
     _thread.join() ;
 
-  close(_port);
+  if (_port >= 0)
+    close(_port);
 }
