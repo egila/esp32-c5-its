@@ -13,7 +13,7 @@ int64_t sys_to_gps_time_us(int64_t sys_us)
 esp_timer_handle_t gps_log_data_timer;
 void gps_log_data(void *pvParameters)
 {
-  struct LogData data;
+  static struct LogData data; // esp_timer task only; 2 KB is too much for its stack
 
   int64_t current_time = esp_timer_get_time();
 
