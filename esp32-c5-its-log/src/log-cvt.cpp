@@ -74,6 +74,43 @@ bool header_valid(const Header &header)
   }
 }
 
+// usb log: a record must be followed by a magic or the end of the file.
+// If a magic with a valid header starts inside the record instead, the
+// receiver was reset while sending it: drop the record, resync there.
+bool record_complete(FILE *log, off_t start, const Header &header, const std::vector<uint8_t> &body)
+{
+  auto is_magic = [](const uint8_t *p)
+  {
+    return (p[0] == 0xaa) && (p[1] == 0x55) && (p[2] == 0x55) && (p[3] == 0xaa) ;
+  } ;
+  uint8_t next[4 + sizeof(Header) - 1] ; // a magic and header may start in the last body byte
+  off_t end = ftello(log) ;
+  if (end < 0) // not seekable, e.g. a pipe: cannot look ahead
+    return true ;
+  size_t n = fread(next, 1, sizeof(next), log) ;
+
+  fseeko(log, end, SEEK_SET) ;
+  if ((n < 4) || is_magic(next)) // end of file or next record
+    return true ;
+
+  std::vector<uint8_t> data((const uint8_t*)&header, (const uint8_t*)&header + sizeof(Header)) ;
+  data.insert(data.end(), body.begin(), body.end()) ;
+  data.insert(data.end(), next, next + n) ;
+
+  for (size_t pos = 0 ; (pos < sizeof(Header) + body.size()) && (pos + 4 + sizeof(Header) <= data.size()) ; ++pos)
+  {
+    if (is_magic(&data[pos]) && header_valid(*(const Header*)&data[pos + 4]))
+    {
+      std::cerr << "record at offset " << start << " cut short, dropped\n" ;
+      fseeko(log, start + 4 + (off_t) pos, SEEK_SET) ;
+      return false ;
+    }
+  }
+
+  std::cerr << "record at offset " << start << " followed by non-log data\n" ;
+  return true ;
+}
+
 bool log_cvt(FILE *log, bool isUsbLog, std::unique_ptr<Writer> &writer, ContentCount &count)
 {
   Header header ;
@@ -95,7 +132,18 @@ bool log_cvt(FILE *log, bool isUsbLog, std::unique_ptr<Writer> &writer, ContentC
   }
 
   if (!read(log, header.body_size, body))
-    return false ;
+  {
+    if (!isUsbLog || ferror(log))
+      return false ;
+    // the body runs past the end of the file, e.g. the receiver was reset
+    // while sending it: rescan behind the header for later records
+    std::cerr << "record at offset " << start << " truncated\n" ;
+    fseeko(log, start + 4 + (off_t) sizeof(Header), SEEK_SET) ;
+    return true ;
+  }
+
+  if (isUsbLog && !record_complete(log, start, header, body))
+    return true ;
 
   switch (header.pkt_type)
   {

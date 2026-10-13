@@ -31,6 +31,13 @@ check 10/1/1/1 clean.sd
 check 20/0/2/2 reset-after-magic.usb -u
 check 10/0/1/1 overlap.usb -u
 check 2/0/1/1 unknown-type.usb -u
+check 21/0/1/1 cut-record.usb -u
+check 3/0/2/2 cut-record-end.usb -u
+
+# a fifo cannot be seeked: its records are read without look-ahead
+mkfifo "$tmp/fifo.usb"
+cat "$tmp/clean.usb" > "$tmp/fifo.usb" &
+check 10/1/1/1 fifo.usb -u
 
 # a usb log read as sd log stops at the first header
 if "$cvt" "$tmp/clean.usb" 2>&1 >/dev/null | grep -q 'invalid record header at offset 0' ; then
