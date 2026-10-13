@@ -12,7 +12,15 @@ PcapWriter::~PcapWriter()
 bool PcapWriter::open(const std::string &logName)
 {
   std::string pcapName = logName + ".pcapng" ;
-  _writer = make_unique<fpcap::pcapng::StreamPcapNgWriter>(pcapName, false, 105);
+  try
+  {
+    _writer = make_unique<fpcap::pcapng::StreamPcapNgWriter>(pcapName, false, 105);
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "open pcapng " << pcapName << " failed: " << e.what() << "\n" ;
+    return false ;
+  }
   return true ;
 }
 
