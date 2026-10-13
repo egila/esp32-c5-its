@@ -30,6 +30,7 @@ struct Options
   std::string _mqttTopicPacket ;
   std::string _mqttTopicStatus ;
   uint32_t    _tls ; // 0 no tls, 1 tls, 2 tls w/o vfy
+  std::string _caFile {} ;
 } ;
 extern Options options ;
 
