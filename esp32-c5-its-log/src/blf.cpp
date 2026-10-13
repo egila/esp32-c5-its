@@ -116,7 +116,8 @@ bool BlfWriter::writeGps(uint64_t timeUs, const std::vector<uint8_t> &data)
 
   if (data.size() < sizeof(Gps))
     return false ;
-  const Gps &gps = *(Gps*)data.data() ;
+  Gps gps ;
+  memcpy(&gps, data.data(), sizeof(gps)) ;
 
   memset(&gnssSysVarData, 0, sizeof(gnssSysVarData)) ;
 

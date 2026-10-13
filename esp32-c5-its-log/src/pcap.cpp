@@ -1,4 +1,4 @@
-#include <arpa/inet.h>
+#include <cstring>
 
 #include "log-cvt.h"
 
@@ -54,9 +54,13 @@ uint32_t crc32(const uint8_t *data, size_t size)
   return ~crc;
 }
 
+static void put_be16(uint8_t *p, uint16_t v) { p[0] = v >> 8 ; p[1] = v ; }
+static void put_be32(uint8_t *p, uint32_t v) { p[0] = v >> 24 ; p[1] = v >> 16 ; p[2] = v >> 8 ; p[3] = v ; }
+static void put_le32(uint8_t *p, uint32_t v) { p[0] = v ; p[1] = v >> 8 ; p[2] = v >> 16 ; p[3] = v >> 24 ; }
+
 bool PcapWriter::writeGps(uint64_t timeUs, const std::vector<uint8_t> &data)
 {
-  static uint8_t beacon[] =
+  static const uint8_t beaconTemplate[] =
   {
     0x88, 0x00, 0x00, 0x00,  0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xAA, 0xAA,  0xAA, 0xAA, 0xAA, 0xAA,
     0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xd0, 0x39,  0x20, 0x00, 0xaa, 0xaa,  0x03, 0x00, 0x00, 0x00,
@@ -68,7 +72,11 @@ bool PcapWriter::writeGps(uint64_t timeUs, const std::vector<uint8_t> &data)
   if (data.size() < sizeof(Gps))
     return false ;
 
-  Gps *gpsLogData = (Gps*)data.data() ;
+  uint8_t beacon[sizeof(beaconTemplate)] ;
+  memcpy(beacon, beaconTemplate, sizeof(beacon)) ;
+
+  Gps gps ;
+  memcpy(&gps, data.data(), sizeof(gps)) ;
 
   uint64_t timeUtc2004Ms = 1072915200000LL ; // Utc seconds 1970-01-01 to 2004-01-01
   uint64_t leapMs = 5000LL ; // leap seconds since 2004-01-01 (since 2016-12-31 23:59:60)
@@ -80,14 +88,14 @@ bool PcapWriter::writeGps(uint64_t timeUs, const std::vector<uint8_t> &data)
     timeTaiMs += leapMs ;
   }
 
-  *(uint32_t*)(beacon + 0x36) = htonl((uint32_t)timeTaiMs) ;
-  *(int32_t*)(beacon + 0x3a) = htonl(gpsLogData->latitude) ;
-  *(int32_t*)(beacon + 0x3e) = htonl(gpsLogData->longitude) ;
-  *(int16_t*)(beacon + 0x42) = htons(gpsLogData->speed) ;
-  *(int16_t*)(beacon + 0x44) = htons(gpsLogData->heading/1e4) ;
+  put_be32(beacon + 0x36, (uint32_t)timeTaiMs) ;
+  put_be32(beacon + 0x3a, (uint32_t)gps.latitude) ;
+  put_be32(beacon + 0x3e, (uint32_t)gps.longitude) ;
+  put_be16(beacon + 0x42, (uint16_t)gps.speed) ;
+  put_be16(beacon + 0x44, (uint16_t)(gps.heading / 10000)) ;
 
-  uint32_t fcs = crc32(beacon, sizeof(beacon)-sizeof(uint32_t));
-  *(uint32_t*)(beacon + 0x46) = htonl(fcs) ;
+  // 802.11 FCS: CRC-32 over the frame, least significant byte first
+  put_le32(beacon + 0x46, crc32(beacon, 0x46)) ;
 
   fpcap::Packet packet{};
 
