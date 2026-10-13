@@ -31,6 +31,40 @@ typedef enum
 static volatile uint32_t time_at_last_gga = 0 ;
 static volatile uint32_t date_at_last_rmc = 0 ;
 
+static int hex_digit(char c)
+{
+  if ((c >= '0') && (c <= '9'))
+    return c - '0' ;
+  if ((c >= 'A') && (c <= 'F'))
+    return c - 'A' + 10 ;
+  if ((c >= 'a') && (c <= 'f'))
+    return c - 'a' + 10 ;
+  return -1 ;
+}
+
+// "$<body>*hh": hh is the XOR of all characters of <body> as two hex digits.
+// A line cut off at the end of line_buffer has lost its "*hh" and fails.
+static bool nmea_checksum_ok(const char *line, int len)
+{
+  if ((len < 4) || (line[0] != '$') || (line[len - 3] != '*'))
+    return false ;
+
+  int hi = hex_digit(line[len - 2]) ;
+  int lo = hex_digit(line[len - 1]) ;
+  if ((hi < 0) || (lo < 0))
+    return false ;
+
+  uint8_t sum = 0 ;
+  for (int i = 1 ; i < len - 3 ; ++i)
+  {
+    if (line[i] == '*') // only valid as the checksum delimiter
+      return false ;
+    sum ^= (uint8_t)line[i] ;
+  }
+
+  return sum == ((hi << 4) | lo) ;
+}
+
 static void calc_offset()
 {
   static bool first = 1 ;
@@ -90,6 +124,9 @@ void gps_nmea_read_task(void *pvParameters)
       {
         line_buffer[line_idx] = 0;
         ESP_LOGI(TAG, "gps %s", line_buffer) ;
+        // ignore a line with a missing or wrong checksum: no sentence type matches ""
+        if (!nmea_checksum_ok(line_buffer, line_idx))
+          line_buffer[0] = 0 ;
 
         if (nmea_is_type(line_buffer, line_idx, "GGA"))
         {
