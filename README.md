@@ -132,7 +132,7 @@ make
 ```
 Extra compiler and linker flags can be passed, e.g. Homebrew paths on macOS: ```make CPPFLAGS="-I$(brew --prefix)/include -I$(brew --prefix openssl@3)/include" LDFLAGS="-L$(brew --prefix)/lib"```
 ### Usage
-For a your individual OTM node id use option ```-mi```. The last 6 digits of the Linux machine id (/etc/machine-id) will be appended for uniqueness. If no ```-mt``` is given the topic path will be updated accordingly. E.g. ```-mi myNode``` will produce id ```myNode-ABCDEF``` and topic ```/its/myNode-ABCDEF/packet```.
+For a your individual OTM node id use option ```-mi```. The last 6 digits of the Linux machine id (/etc/machine-id) will be appended for uniqueness. If no ```-mt``` is given the topic path will be updated accordingly. E.g. ```-mi myNode``` will produce id ```myNode-abcdef``` and topic ```its/myNode-abcdef/packet```. The bridge also publishes a retained ```online```/```offline``` status on the same topic with ```/packet``` replaced by ```/status``` (here ```its/myNode-abcdef/status```); ```offline``` is also its MQTT last will.
 
 ```txt
 usage: esp32-c5-its-otm [option] ...
