@@ -122,6 +122,7 @@ options
   --tls                     tls (default)
   --tls-unsecure            tls but no verification
   --tls-off                 no tls
+  --cafile <file>           tls ca file (default first readable of /etc/ssl/certs/ca-certificates.crt, /etc/pki/tls/certs/ca-bundle.crt, /etc/ssl/ca-bundle.pem, /etc/ssl/cert.pem)
 ```
 
 ## Log File Format

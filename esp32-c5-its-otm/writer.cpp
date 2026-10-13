@@ -23,18 +23,40 @@ bool Writer::start()
     will_set(options._mqttTopicStatus.c_str(), static_cast<int>(statusOffline.size()), statusOffline.c_str(), 1, true) ;
   }
 
+  std::string caFile = options._caFile ;
+  if (options._tls && caFile.empty())
+  {
+    std::vector<std::string> paths{"/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem"} ;
+    caFile = paths[0] ;
+    for (const auto &path : paths)
+    {
+      if (access(path.c_str(), R_OK) == 0)
+      {
+        caFile = path ;
+        break ;
+      }
+    }
+  }
+
   switch (options._tls)
   {
     default:
       break ;
     case 1:
-      tls_set("/etc/ssl/certs/ca-certificates.crt", nullptr, nullptr, nullptr, nullptr);
+      rc = tls_set(caFile.c_str(), nullptr, nullptr, nullptr, nullptr);
       break ;
     case 2:
-      tls_set("/etc/ssl/certs/ca-certificates.crt", nullptr, nullptr, nullptr, nullptr);
-      tls_opts_set(SSL_VERIFY_NONE, nullptr, nullptr);
-      tls_insecure_set(true);
+      rc = tls_set(caFile.c_str(), nullptr, nullptr, nullptr, nullptr);
+      if (rc == MOSQ_ERR_SUCCESS)
+        rc = tls_opts_set(SSL_VERIFY_NONE, nullptr, nullptr);
+      if (rc == MOSQ_ERR_SUCCESS)
+        rc = tls_insecure_set(true);
       break ;
+  }
+  if (rc != MOSQ_ERR_SUCCESS)
+  {
+    std::cerr << "tls setup failed (ca file " << caFile << "): " << mosqpp::strerror(rc) << std::endl;
+    return false ;
   }
   rc = connect(options._mqttHost.c_str(), options._mqttPort, 60);
   if (rc != MOSQ_ERR_SUCCESS)
