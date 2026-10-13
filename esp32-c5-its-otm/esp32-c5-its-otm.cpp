@@ -2,13 +2,9 @@
 
 std::atomic<bool> shutdown(false) ;
 
-void signal_handler(int signal)
+void signal_handler(int)
 {
-  if (signal == SIGINT)
-  {
-    std::cout << "\nSIGINT received. Exiting ...\n" ;
-    shutdown = true ;
-  }
+  shutdown = true ;
 }
 
 #define MQTT_DEFAULT_ID "esp32-c5-its"
@@ -74,7 +70,11 @@ void usage()
 
 int main(int argc, char *argv[])
 {
+  std::signal(SIGPIPE, SIG_IGN);
   std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
+  if (std::signal(SIGHUP, SIG_IGN) != SIG_IGN)
+    std::signal(SIGHUP, signal_handler);
 
   for (int iArg = 1 ; iArg < argc ; ++iArg)
   {
@@ -185,6 +185,7 @@ int main(int argc, char *argv[])
   }
 
   reader.stop() ;
+  std::cout << "\nExiting ...\n" ;
   parser.stop() ;
   writer.stop() ;
 
