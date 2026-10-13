@@ -25,7 +25,6 @@ static const char *TAG = "ESP32-C5-ITS main";
 #if defined(RGB)
 
 led_strip_handle_t led_strip;
-esp_timer_handle_t led_timer;
 
 static void led_off_timer_cb(void *arg)
 {
@@ -51,9 +50,19 @@ static void led_off_timer_cb(void *arg)
 static TaskHandle_t led_flash_task = NULL;
 void led_flash(void *pvParameters)
 {
+  bool on = false;
+
   while (1)
   {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    // the only code driving the strip (set_pixel + refresh is not thread
+    // safe): back to the steady colour 50 ms after the last record
+    if (ulTaskNotifyTake(pdTRUE, on ? pdMS_TO_TICKS(50) : portMAX_DELAY) == 0)
+    {
+      led_off_timer_cb(NULL);
+      on = false;
+      continue;
+    }
+
     uint8_t state = 0;
 
     if (usb_serial_jtag_is_connected())
@@ -72,8 +81,7 @@ void led_flash(void *pvParameters)
     }
     led_strip_refresh(led_strip);
 
-    esp_timer_stop(led_timer);
-    esp_timer_start_once(led_timer, 50000); // us
+    on = true;
   }
 }
 
@@ -89,19 +97,11 @@ static void led_init()
   };
   ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
   led_off_timer_cb(NULL);
-
-  const esp_timer_create_args_t timer_args = {
-      .callback = &led_off_timer_cb,
-      .name = "led_off"
-    };
-  ESP_ERROR_CHECK(esp_timer_create(&timer_args, &led_timer));
 }
 
 #endif
 
 #if defined(LED)
-
-esp_timer_handle_t led_timer;
 
 static void led_off_timer_cb(void *arg)
 {
@@ -111,14 +111,21 @@ static void led_off_timer_cb(void *arg)
 static TaskHandle_t led_flash_task = NULL;
 void led_flash(void *pvParameters)
 {
+  bool on = false;
+
   while (1)
   {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    // only this task drives the LED, off again 50 ms after the last record
+    if (ulTaskNotifyTake(pdTRUE, on ? pdMS_TO_TICKS(50) : portMAX_DELAY) == 0)
+    {
+      led_off_timer_cb(NULL);
+      on = false;
+      continue;
+    }
 
     gpio_set_level(LED_GPIO, 0);
 
-    esp_timer_stop(led_timer);
-    esp_timer_start_once(led_timer, 50000); // us
+    on = true;
   }
 }
 
@@ -128,12 +135,6 @@ static void led_init()
   gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
 
   led_off_timer_cb(NULL);
-
-  const esp_timer_create_args_t timer_args = {
-      .callback = &led_off_timer_cb,
-      .name = "led_off"
-    };
-  ESP_ERROR_CHECK(esp_timer_create(&timer_args, &led_timer));
 }
 
 #endif
