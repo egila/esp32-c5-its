@@ -94,13 +94,18 @@ bool Reader::start()
 
   _thread = std::thread([this]()
   {
-    auto lost = [this](const char *reason, int err)
+    const std::chrono::seconds noDataMin(30), noDataMax(300) ;
+    std::chrono::seconds noDataLimit = noDataMin ;
+    auto lastData = std::chrono::steady_clock::now() ;
+
+    auto lost = [this, &lastData](const char *reason, int err)
     {
       std::cerr << "\ntty " << options._ttyName << " lost: " << reason ;
       if (err)
         std::cerr << ": " << strerror(err) ;
       std::cerr << std::endl ;
       reopenPort() ;
+      lastData = std::chrono::steady_clock::now() ;
     } ;
 
     uint8_t buff[256];
@@ -119,8 +124,17 @@ bool Reader::start()
         continue;
       }
 
-      if (nSel == 0)
+      if (nSel == 0) {
+        if (std::chrono::steady_clock::now() - lastData > noDataLimit) {
+          std::cerr << "\nno data from " << options._ttyName << " for " << noDataLimit.count() << " s, resetting the receiver" << std::endl ;
+          reopenPort() ;
+          lastData = std::chrono::steady_clock::now() ;
+          noDataLimit *= 2 ;
+          if (noDataLimit > noDataMax)
+            noDataLimit = noDataMax ;
+        }
         continue;
+      }
 
       ssize_t nBuff = read(_port, &buff, sizeof(buff));
 
@@ -134,6 +148,9 @@ bool Reader::start()
           lost("read failed", errno) ;
         continue;
       }
+
+      lastData = std::chrono::steady_clock::now() ;
+      noDataLimit = noDataMin ;
 
       for (ssize_t iBuff = 0; iBuff < nBuff; ++iBuff) {
         _queue.push(buff[iBuff]) ;
