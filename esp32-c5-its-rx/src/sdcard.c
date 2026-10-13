@@ -1,6 +1,7 @@
 #if defined(SDCARD)
 
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -92,8 +93,14 @@ void sdcard_control_task(void *pvParameters)
         char filename[64] ;
         if (xSemaphoreTake(logFileMutex, portMAX_DELAY) == pdTRUE)
         {
-          sprintf(filename, "%s/log-%lld.dat", MOUNT_POINT, sys_to_gps_time_us(esp_timer_get_time()) / 1000000) ;
-          logFile = fopen(filename, "wb");
+          int64_t now_s = sys_to_gps_time_us(esp_timer_get_time()) / 1000000 ;
+          snprintf(filename, sizeof(filename), "%s/log-%lld.dat", MOUNT_POINT, now_s) ;
+          logFile = fopen(filename, "wbx"); // never truncate an existing log
+          for (int i = 1 ; !logFile && (errno == EEXIST) && (i < 100) ; ++i)
+          {
+            snprintf(filename, sizeof(filename), "%s/log-%lld-%d.dat", MOUNT_POINT, now_s, i) ;
+            logFile = fopen(filename, "wbx");
+          }
           xSemaphoreGive(logFileMutex) ;
         }
 
