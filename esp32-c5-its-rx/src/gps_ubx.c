@@ -180,11 +180,16 @@ bool gps_ubx_collect(gps_ubx_frame_t *rx)
   return true ;
 }
 
+#define GPS_UBX_SYNC_TIMEOUT_US 1500000
+
 bool gps_ubx_rx(gps_ubx_frame_t *rx)
 {
   uint16_t magic = 0 ;
 
-  while (true)
+  // a receiver that never pauses for 500 ms (e.g. a busy NMEA-only
+  // module) must not keep the sync search running forever
+  int64_t give_up = esp_timer_get_time() + GPS_UBX_SYNC_TIMEOUT_US ;
+  while (esp_timer_get_time() < give_up)
   {
     uint8_t b ;
     if (!uart_get_byte(&b))
@@ -192,12 +197,12 @@ bool gps_ubx_rx(gps_ubx_frame_t *rx)
 
     magic >>= 8 ;
     magic |= b<<8 ;
-    if (b == '$')
-      ESP_LOGI(TAG, "uart read '$'") ;
 
     if (magic == 0x62b5)
       return gps_ubx_collect(rx) ;
   }
+
+  return false ;
 }
 
 bool gps_ubx_tx(gps_ubx_frame_t *tx)
