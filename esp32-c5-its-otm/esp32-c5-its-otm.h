@@ -12,6 +12,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <algorithm>
 #include <mosquittopp.h>
 #include <openssl/ssl.h>
 
@@ -125,7 +126,11 @@ public:
 private:
   virtual void on_connect(int rc) override ;
   virtual void on_disconnect(int rc) override ;
+  void networkLoop() ;
 
   QueueIts &_queueIts ;
   std::thread _thread ;
+  std::thread _loopThread ;
+  std::atomic<bool> _loopStop{false} ;
+  std::atomic<int> _reconnectDelay{1} ;
 } ;
