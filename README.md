@@ -95,6 +95,25 @@ options:
   -u    source is usb log with magic bytes (default sd log w/o magic bytes)
 ```
 
+### Recording a USB log
+The USB data is binary. Record it with the port in raw mode, otherwise the tty layer changes or drops bytes and `cat` may stop early. Don't use a terminal program (screen, minicom, `pio device monitor`) for recording.
+```txt
+# Linux
+( stty raw -echo -hupcl; exec cat ) < /dev/ttyACM0 > usb.log
+# macOS (with only one ESP connected)
+( stty raw -echo -hupcl; exec cat ) < /dev/cu.usbmodem* > usb.log
+# alternative with socat
+socat -u /dev/ttyACM0,rawer CREATE:usb.log
+```
+Stop the recording with Ctrl-C and convert it with `log-cvt -p -u usb.log`.
+
+- A plain open of the port as above does not reset the ESP. Opening it with DTR low does, e.g. pyserial with `dtr=False` or `pio device monitor` with `monitor_dtr = 0`. Own programs should leave DTR and RTS as they are after open (pyserial default).
+- Only one program at a time may read the port, with two each gets only parts of the stream. ESP32-C5-ITS-OTM resets the ESP when it starts.
+- After a reset the ROM and bootloader print text before the first record. Readers must resync on the magic bytes, as `log-cvt -u` does.
+- Version and Info are sent only once after boot, a recording started later may not contain them.
+- Records produced while no program has the port open are lost or arrive late, without any marker for the gap. Start the recording first and keep it running.
+- Linux: ModemManager may probe the port. To exclude the ESP add a udev rule, e.g. `/etc/udev/rules.d/99-esp32-c5-its.rules` with `ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ENV{ID_MM_DEVICE_IGNORE}="1"`, and replug the ESP.
+
 ## ESP32-C5-ITS-OTM (Open Traffic Map)
 
 Linux client for Open Traffic Map. Connect the ESP and send captured messages to Open Traffic Map.
