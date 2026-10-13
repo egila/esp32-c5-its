@@ -21,6 +21,7 @@ static const char *TAG = "ESP32-C5-ITS sdcard";
 static sdmmc_card_t *card;
 static FILE *logFile ;
 static SemaphoreHandle_t logFileMutex;
+static int64_t logFileSyncTime ;
 
 static TaskHandle_t sdcard_task_handle = NULL;
 volatile bool sdcard_active = false;
@@ -40,18 +41,30 @@ void sdcard_writer_task(void*)
 
   while (1)
   {
-    if (xQueueReceive(sdcard_queue, &log_data, portMAX_DELAY))
+    // wake at least once per second so the file is synced without traffic
+    BaseType_t received = xQueueReceive(sdcard_queue, &log_data, pdMS_TO_TICKS(1000)) ;
+
+    if (xSemaphoreTake(logFileMutex, pdMS_TO_TICKS(500)) == pdTRUE)
     {
-      if (xSemaphoreTake(logFileMutex, pdMS_TO_TICKS(500)) == pdTRUE)
+      if (logFile)
       {
-        if (logFile)
+        if (received)
         {
           fwrite(&log_data.header, sizeof(log_data.header), 1, logFile) ;
           fwrite(&log_data.body, log_data.header.body_size, 1, logFile) ;
           fflush(logFile) ;
         }
-        xSemaphoreGive(logFileMutex) ;
+
+        // FatFs writes the file size to the directory entry only on sync;
+        // without it a reset or power loss leaves a 0-byte log file
+        int64_t now = esp_timer_get_time() ;
+        if (now - logFileSyncTime >= 1000000)
+        {
+          fsync(fileno(logFile)) ;
+          logFileSyncTime = now ;
+        }
       }
+      xSemaphoreGive(logFileMutex) ;
     }
   }
 }
