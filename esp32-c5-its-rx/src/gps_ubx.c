@@ -331,6 +331,7 @@ void recv_pos()
       (last_nav_status.iTOW != last_nav_velned.iTOW))
     return ;
 
+  gps_pos_active = 0 ;
   memset((void*)&gps_data, 0, sizeof(gps_data)) ;
 
   if (last_nav_status.flags & 0x01) // gps fix ok

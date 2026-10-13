@@ -111,8 +111,9 @@ void gps_nmea_read_task(void *pvParameters)
             gps_time_active = 0 ;
           }
 
+          gps_pos_active = 0 ;
           memset((void*)&gps_data, 0, sizeof(gps_data)) ;
-          uint8_t gps_fix ;
+          uint8_t gps_fix = 0 ;
 
           if (nComma > 9)
           {
