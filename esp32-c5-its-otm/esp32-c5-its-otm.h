@@ -39,18 +39,23 @@ public:
   bool pop(T &value) ;
   bool empty() ;
   void clear() ;
+  size_t drops() ;
 
 private:
   std::queue<T> _queue;
   std::mutex _mutex;
   std::condition_variable _cv;
+  size_t _drops{0}; // elements dropped by push(), plus clear() calls
 } ;
 
 template<class T, size_t Size>
 bool Queue<T,Size>::push(T value) {
   std::lock_guard<std::mutex> lock(_mutex);
   if (_queue.size() > Size)
+  {
     _queue.pop();
+    ++_drops;
+  }
   _queue.push(std::move(value));
   _cv.notify_one();
   return true ;
@@ -82,9 +87,15 @@ template<class T, size_t Size>
 void Queue<T,Size>::clear() {
     std::lock_guard<std::mutex> lock(_mutex);
     _queue = {} ;
+    ++_drops;
+}
+template<class T, size_t Size>
+size_t Queue<T,Size>::drops() {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _drops;
 }
 
-using QueueTty = Queue<uint8_t, 2000> ;
+using QueueTty = Queue<uint8_t, 65536> ;
 using QueueIts = Queue<std::vector<uint8_t>, 64> ;
 
 class Reader
