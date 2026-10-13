@@ -84,7 +84,7 @@ Linux Converter for the recorded data, it converts to
  - [Technica-Engineering vector_blf](https://github.com/Technica-Engineering/vector_blf)
 
 ### Compile
-Download and compile fpcap and vector_blf libraries. Update the library paths in the Makefile and run make.
+Download and compile fpcap and vector_blf libraries, then run `make VECTOR_BLF=<vector_blf install prefix> FPCAP=<fpcap source dir with build/>`.
 
 ### Usage
 ```txt
