@@ -48,6 +48,8 @@ std::string machineId()
       continue ;
 
     std::getline(f, mid) ;
+    if (mid.empty() || (mid.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos))
+      continue ; // empty or "uninitialized", try next path
     if (mid.size() > 6)
       mid = mid.erase(0, mid.size() - 6) ;
     return mid ;
@@ -146,6 +148,8 @@ int main(int argc, char *argv[])
   if (mid.size())
     options._mqttId += "-" + mid ;
   std::cout << "mid " << mid << " " << options._mqttId << "\n" ;
+  if (mid.empty() && (options._mqttId == MQTT_DEFAULT_ID))
+    std::cerr << "warning: no machine id found; all such bridges share the mqtt id " MQTT_DEFAULT_ID ", use -mi <unique id>\n" ;
 
   size_t pos = options._mqttTopicPacket.find(MQTT_DEFAULT_ID) ;
   if (pos != std::string::npos)
