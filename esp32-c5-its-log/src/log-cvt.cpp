@@ -51,13 +51,48 @@ bool skip_magic(FILE *log)
 }
 
 
-bool log_cvt(FILE *log, std::unique_ptr<Writer> &writer, ContentCount &count)
+// check a header against the log format log-cvt was built with
+bool header_valid(const Header &header)
+{
+  if ((header.reserved != 0) ||
+      (header.timestamp_us < 0) ||
+      (header.body_size > sizeof(Body)))
+    return false ;
+
+  switch (header.pkt_type)
+  {
+  case LOG_DATA_TYPE_TIME:
+    return header.body_size == 0 ;
+  case LOG_DATA_TYPE_ITS:
+    return header.body_size > 0 ;
+  case LOG_DATA_TYPE_GPS:
+    return header.body_size == sizeof(Gps) ;
+  case LOG_DATA_TYPE_VERSION:
+    return header.body_size == sizeof(Version) ;
+  default: // info and unknown types
+    return true ;
+  }
+}
+
+bool log_cvt(FILE *log, bool isUsbLog, std::unique_ptr<Writer> &writer, ContentCount &count)
 {
   Header header ;
   std::vector<uint8_t> body ;
+  off_t start = ftello(log) - (isUsbLog ? 4 : 0) ; // record offset, usb: of its magic
 
   if (!read(log, header))
     return false ;
+
+  if (!header_valid(header))
+  {
+    std::cerr << "invalid record header at offset " << start << "\n" ;
+    if (!isUsbLog)
+      return false ;
+    // not a record (e.g. boot text after a magic): rescan from the byte
+    // after this magic, the next magic may overlap it
+    fseeko(log, start + 1, SEEK_SET) ;
+    return true ;
+  }
 
   if (!read(log, header.body_size, body))
     return false ;
@@ -91,12 +126,14 @@ bool log_cvt(FILE *log, std::unique_ptr<Writer> &writer, ContentCount &count)
         << "\nVersion:\n"
         << "Log: " << (int) version.logVersion << "\n"
         << "Prg: " << (int) version.prgVerMaj << "." << (int) version.prgVerMin << "." << (int) version.prgVerRev << "\n" ;
+      if (version.logVersion != LOG_DATA_VERSION)
+        std::cerr << "log format version " << (int) version.logVersion << ", log-cvt was built for version " << LOG_DATA_VERSION << "\n" ;
     }
     break ;
   default:
     count.unknown += 1 ;
-    std::cerr << "unknown type: " << (int) header.pkt_type << "\n" ;
-    return false ;
+    std::cerr << "unknown type " << (int) header.pkt_type << " (" << header.body_size << " bytes) at offset " << start << ", skipped\n" ;
+    break ;
   }
 
   return true ;
@@ -178,7 +215,7 @@ int main(int argc, char *argv[])
     while (!feof(log))
     {
       if ((isUsbLog && !skip_magic(log)) ||
-          !log_cvt(log, writer, count))
+          !log_cvt(log, isUsbLog, writer, count))
         break ;
     }
 
