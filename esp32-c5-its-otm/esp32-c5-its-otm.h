@@ -133,4 +133,5 @@ private:
   std::thread _loopThread ;
   std::atomic<bool> _loopStop{false} ;
   std::atomic<int> _reconnectDelay{1} ;
+  std::atomic<bool> _connected{false} ;
 } ;

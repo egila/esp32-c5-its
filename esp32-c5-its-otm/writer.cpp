@@ -43,6 +43,21 @@ bool Writer::start()
     return false ;
   }
 
+  // one publisher for the whole run, packets are dropped while not connected
+  _thread = std::thread([this]()
+  {
+    std::vector<uint8_t> data ;
+
+    while (!shutdown)
+    {
+      if (!_queueIts.pop(data))
+        continue ;
+
+      if (_connected)
+        publish(nullptr, options._mqttTopicPacket.c_str(), static_cast<int>(data.size()), data.data(), 0, false);
+    }
+  }) ;
+
   _loopThread = std::thread(&Writer::networkLoop, this) ;
 
   return true ;
@@ -80,35 +95,17 @@ void Writer::networkLoop()
   }
 }
 
-std::atomic<bool> shutdownWriter ;
-
 void Writer::on_connect(int rc)
 {
+  // stop() publishes 'offline' and disconnects, do not go 'online' again
+  if (shutdown)
+    return ;
+
   if (options._mqttTopicStatus.size())
     publish(nullptr, options._mqttTopicStatus.c_str(), static_cast<int>(statusOnline.size()), statusOnline.c_str(), 1, true) ;
 
-  if (_thread.joinable())
-  {
-    _thread.detach() ;
-  }
-  shutdownWriter = false;
-
-  _thread = std::thread([this]()
-  {
-    std::vector<uint8_t> data ;
-
-    _queueIts.clear() ;
-    while (!shutdown)
-    {
-      if (!_queueIts.pop(data))
-        continue ;
-
-      if (shutdownWriter)
-        return ;
-
-      publish(nullptr, options._mqttTopicPacket.c_str(), static_cast<int>(data.size()), data.data(), 0, false);
-    }
-  }) ;
+  _queueIts.clear() ;
+  _connected = true ;
 
   if (rc == 0)
     _reconnectDelay = 1 ;
@@ -116,8 +113,7 @@ void Writer::on_connect(int rc)
 
 void Writer::on_disconnect(int rc)
 {
-  shutdownWriter = true ;
-  _queueIts.push({}) ;
+  _connected = false ;
 }
 
 void Writer::stop()
