@@ -11,9 +11,10 @@ bool Writer::start()
 {
   mosqpp::lib_init() ;
 
-  int rc = loop_start();
+  // publish() from other threads only queues, networkLoop() sends
+  int rc = threaded_set(true);
   if (rc != MOSQ_ERR_SUCCESS) {
-    std::cerr << "mqtt loop start failed: " << mosqpp::strerror(rc) << std::endl;
+    std::cerr << "mqtt threaded set failed: " << mosqpp::strerror(rc) << std::endl;
     return false ;
   }
 
@@ -42,7 +43,41 @@ bool Writer::start()
     return false ;
   }
 
+  _loopThread = std::thread(&Writer::networkLoop, this) ;
+
   return true ;
+}
+
+void Writer::networkLoop()
+{
+  // own loop instead of loop_start(): loop_forever() gives up for good on
+  // some errors (e.g. a TLS connection closed without close_notify)
+  int rc = MOSQ_ERR_SUCCESS ;
+
+  while (!_loopStop)
+  {
+    if (rc == MOSQ_ERR_SUCCESS)
+      rc = loop(1000, 1) ;
+    if (rc == MOSQ_ERR_SUCCESS)
+      continue ;
+
+    if (shutdown)
+    {
+      // stop() sends 'offline' and disconnects, do not reconnect
+      std::this_thread::sleep_for(std::chrono::milliseconds(100)) ;
+      rc = MOSQ_ERR_SUCCESS ;
+      continue ;
+    }
+
+    int delay = _reconnectDelay ;
+    std::cerr << "mqtt: " << mosqpp::strerror(rc) << ", reconnecting in " << delay << " s" << std::endl ;
+    for (int i = 0 ; (i < delay * 10) && !shutdown ; ++i)
+      std::this_thread::sleep_for(std::chrono::milliseconds(100)) ;
+    _reconnectDelay = std::min(delay * 2, 60) ;
+
+    if (!shutdown)
+      rc = reconnect() ;
+  }
 }
 
 std::atomic<bool> shutdownWriter ;
@@ -74,6 +109,9 @@ void Writer::on_connect(int rc)
       publish(nullptr, options._mqttTopicPacket.c_str(), static_cast<int>(data.size()), data.data(), 0, false);
     }
   }) ;
+
+  if (rc == 0)
+    _reconnectDelay = 1 ;
 }
 
 void Writer::on_disconnect(int rc)
@@ -94,6 +132,8 @@ void Writer::stop()
   }
   disconnect() ;
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
-  loop_stop(true) ;
+  _loopStop = true ;
+  if (_loopThread.joinable())
+    _loopThread.join() ;
   mosqpp::lib_cleanup() ;
 }
