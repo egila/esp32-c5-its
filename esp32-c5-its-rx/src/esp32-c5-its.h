@@ -54,6 +54,7 @@ extern QueueHandle_t usb_queue;
 #if defined(SDCARD)
 extern volatile bool sdcard_active;
 extern QueueHandle_t sdcard_queue;
+extern void report_sdcard_queue_full() ;
 #endif
 
 extern void log_data(struct LogData *data) ;

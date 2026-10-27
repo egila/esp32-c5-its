@@ -78,6 +78,9 @@ void sdcard_writer_task(void*)
       }
       xSemaphoreGive(logFileMutex) ;
     }
+
+    // a drop leaves the queue full, so this runs right after it
+    report_sdcard_queue_full() ;
   }
 }
 

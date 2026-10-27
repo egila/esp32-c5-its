@@ -143,6 +143,23 @@ static void led_init()
 static atomic_uint usb_queue_full_count ;
 #if defined(SDCARD)
 static atomic_uint sdcard_queue_full_count ;
+
+// sdcard writer task only (the usb task can block on a host that does not
+// read): report records dropped by log_data(), at most once per second
+void report_sdcard_queue_full()
+{
+  static unsigned sdcard_queue_full_reported = 0 ;
+  static int64_t next_report_time = 0 ;
+
+  unsigned count = atomic_load(&sdcard_queue_full_count) ;
+  int64_t current_time = esp_timer_get_time() ;
+  if ((count != sdcard_queue_full_reported) && (current_time >= next_report_time))
+  {
+    next_report_time = current_time + 1000000 ; // us
+    ESP_LOGW(TAG, "sdcard queue full: %u records dropped (%u total)", count - sdcard_queue_full_reported, count) ;
+    sdcard_queue_full_reported = count ;
+  }
+}
 #endif
 
 // usb
@@ -166,14 +183,11 @@ void usb_transmitter_task(void *)
   xQueueSend(usb_queue, &data, 0) ;
 
   unsigned usb_queue_full_reported = 0 ;
-#if defined(SDCARD)
-  unsigned sdcard_queue_full_reported = 0 ;
-#endif
   int64_t next_report_time = 0 ;
 
   while (1)
   {
-    // report records dropped by log_data(), at most once per second
+    // report usb records dropped by log_data(), at most once per second
     int64_t current_time = esp_timer_get_time() ;
     if (current_time >= next_report_time)
     {
@@ -184,14 +198,6 @@ void usb_transmitter_task(void *)
         ESP_LOGW(TAG, "usb queue full: %u records dropped (%u total)", count - usb_queue_full_reported, count) ;
         usb_queue_full_reported = count ;
       }
-#if defined(SDCARD)
-      count = atomic_load(&sdcard_queue_full_count) ;
-      if (count != sdcard_queue_full_reported)
-      {
-        ESP_LOGW(TAG, "sdcard queue full: %u records dropped (%u total)", count - sdcard_queue_full_reported, count) ;
-        sdcard_queue_full_reported = count ;
-      }
-#endif
     }
 
     if (xQueueReceive(usb_queue, &data, pdMS_TO_TICKS(1000)))
@@ -274,7 +280,7 @@ void init_info_log_data(struct LogData *data)
 
 void log_data(struct LogData *data)
 {
-  // Wi-Fi and esp_timer task context: never log here, the usb task reports the drop counts
+  // Wi-Fi and esp_timer task context: never log here, the usb and sdcard writer tasks report the drop counts
   if (usb_serial_jtag_is_connected() &&
       (xQueueSend(usb_queue, data, 0) != pdTRUE))
   {
