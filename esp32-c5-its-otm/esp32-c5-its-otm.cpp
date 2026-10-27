@@ -183,6 +183,22 @@ int main(int argc, char *argv[])
     options._mqttTopicStatus.replace(pos, strlen("/packet"), "/status") ;
   }
 
+  auto validTopic = [](const std::string &topic, const char *what)
+  {
+    if (!topic.empty() &&
+        (mosquitto_pub_topic_check(topic.c_str()) == MOSQ_ERR_SUCCESS) &&
+        (mosquitto_validate_utf8(topic.c_str(), (int)topic.size()) == MOSQ_ERR_SUCCESS))
+      return true ;
+    std::cerr << "invalid mqtt " << what << " topic \"" << topic << "\"" << std::endl ;
+    return false ;
+  } ;
+  if (!validTopic(options._mqttTopicPacket, "packet") ||
+      (options._mqttTopicStatus.size() && !validTopic(options._mqttTopicStatus, "status")))
+    return 1 ;
+  std::cout << "mqtt id " << options._mqttId
+            << ", packet topic " << options._mqttTopicPacket
+            << ", status topic " << (options._mqttTopicStatus.size() ? options._mqttTopicStatus : "(none)") << "\n" ;
+
   QueueTty queueTty ;
   QueueIts queueIts ;
 
