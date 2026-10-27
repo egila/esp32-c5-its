@@ -5,12 +5,16 @@ on:
     branches: [ "main" ]
     paths:
       - 'esp32-c5-its-otm/**'
+      - 'esp32-c5-its-rx/include/log-data.h'
+      - '.github/workflows/esp32-c5-its-otm.yml'
     tags:
       - 'v*'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'esp32-c5-its-otm/**'
+      - 'esp32-c5-its-rx/include/log-data.h'
+      - '.github/workflows/esp32-c5-its-otm.yml'
   workflow_dispatch:
 
 jobs:
