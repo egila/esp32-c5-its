@@ -48,20 +48,32 @@ void sdcard_writer_task(void*)
     {
       if (logFile)
       {
+        bool ok = true ;
         if (received)
         {
-          fwrite(&log_data.header, sizeof(log_data.header), 1, logFile) ;
-          fwrite(&log_data.body, log_data.header.body_size, 1, logFile) ;
-          fflush(logFile) ;
+          // LogData is packed; one fwrite also covers an empty body
+          ok = (fwrite(&log_data, sizeof(log_data.header) + log_data.header.body_size, 1, logFile) == 1) &&
+               (fflush(logFile) == 0) ;
         }
 
         // FatFs writes the file size to the directory entry only on sync;
         // without it a reset or power loss leaves a 0-byte log file
         int64_t now = esp_timer_get_time() ;
-        if (now - logFileSyncTime >= 1000000)
+        if (ok && (now - logFileSyncTime >= 1000000))
         {
-          fsync(fileno(logFile)) ;
+          ok = (fsync(fileno(logFile)) == 0) ;
           logFileSyncTime = now ;
+        }
+
+        if (!ok)
+        {
+          // after a card error, a removed or full card or the 4 GiB file
+          // limit every later write fails too: stop logging (and the LED),
+          // the next button press remounts and starts a new file
+          ESP_LOGE(TAG, "sdcard write failed (errno %d), logging stopped", errno) ;
+          fclose(logFile) ;
+          logFile = NULL ;
+          sdcard_active = false ;
         }
       }
       xSemaphoreGive(logFileMutex) ;
@@ -88,6 +100,8 @@ esp_err_t mount_sdcard() {
 
 void unmount_sdcard()
 {
+  if (!card)
+    return ;
   esp_vfs_fat_sdcard_unmount(MOUNT_POINT, card);
   card = NULL;
 }
@@ -101,6 +115,7 @@ void sdcard_control_task(void *pvParameters)
 
     if (!sdcard_active)
     {
+      unmount_sdcard() ; // still mounted if the writer stopped on an error
       if (mount_sdcard() == ESP_OK)
       {
         char filename[64] ;
