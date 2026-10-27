@@ -56,9 +56,14 @@ bool Parser::start()
     Header header ;
     std::vector<uint8_t> body ;
     uint32_t shift{0} ;
+    size_t drops{0} ;
 
     while (!shutdown)
     {
+      // QueueTty drops bytes when it is full: note its drop count before a
+      // search (the magic read after a record is covered by that record)
+      if (shift != 0xaa5555aa)
+        drops = _queueTty.drops() ;
       if (!skip_magic(_queueTty, shift))
         return ;
       shift = 0 ;
@@ -83,6 +88,13 @@ bool Parser::start()
       }
       if (shift != 0xaa5555aa)
         continue ;
+      // bytes were dropped while the record was read, so it and the magic
+      // after it may have gaps: drop the record and search for a new magic
+      if (_queueTty.drops() != drops)
+      {
+        shift = 0 ;
+        continue ;
+      }
 
       {
         std::lock_guard<std::mutex> lock(_lastMutex) ;
