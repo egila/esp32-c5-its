@@ -4,9 +4,11 @@
 
 std::atomic<bool> shutdownRequested(false) ;
 
-void signal_handler(int)
+void signal_handler(int signal)
 {
   shutdownRequested = true ;
+  if (signal != SIGHUP) // closing a terminal can send SIGHUP twice
+    std::signal(signal, SIG_DFL) ; // a second signal ends the process at once
 }
 
 #define MQTT_DEFAULT_ID "esp32-c5-its"
