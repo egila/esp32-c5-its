@@ -132,7 +132,7 @@ void Writer::on_connect(int rc)
 {
   if (rc != 0)
   {
-    std::cerr << "mqtt connect refused: " << mosqpp::connack_string(rc) << std::endl ;
+    std::cerr << "\nmqtt connect refused: " << mosqpp::connack_string(rc) << std::endl ;
     return ;
   }
 
@@ -153,7 +153,7 @@ void Writer::on_connect(int rc)
 void Writer::on_disconnect(int rc)
 {
   if (rc != 0)
-    std::cerr << "mqtt disconnected: " << mosqpp::strerror(rc) << std::endl ;
+    std::cerr << "\nmqtt disconnected: " << mosqpp::strerror(rc) << std::endl ;
 
   _connected = false ;
 }
