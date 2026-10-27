@@ -323,6 +323,9 @@ void gpio_init()
 
 void app_main()
 {
+  // keep esp_rom_printf (task watchdog, early logs) out of the binary USB stream, UART0 still gets it
+  esp_rom_install_channel_putc(2, NULL) ;
+
   {
     info_log_data("esp32-c5-its version: %d.%d.%d\n", PRG_VER_MAJ, PRG_VER_MIN, PRG_VER_REV) ;
     char options[80] = {0} ;
