@@ -56,8 +56,8 @@ extern volatile bool sdcard_active;
 extern QueueHandle_t sdcard_queue;
 #endif
 
-extern void log_data() ;
-extern void info_log_data(char *format, ...) ;
+extern void log_data(struct LogData *data) ;
+extern void info_log_data(const char *format, ...) __attribute__((format(printf, 1, 2))) ;
 extern void init_info_log_data(struct LogData *data) ;
 extern void init_version_log_data(struct LogData *data) ;
 
