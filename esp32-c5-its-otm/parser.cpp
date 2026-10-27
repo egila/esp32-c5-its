@@ -28,10 +28,12 @@ bool read(QueueTty &queue, size_t size, std::vector<uint8_t> &v)
   return true ;
 }
 
-bool skip_magic(QueueTty &queue)
+bool skip_magic(QueueTty &queue, uint32_t &magic)
 {
   uint8_t c ;
-  uint32_t magic{0} ;
+
+  if (magic == 0xaa5555aa)
+    return true ;
 
   while (read(queue, c))
   {
@@ -53,20 +55,34 @@ bool Parser::start()
   {
     Header header ;
     std::vector<uint8_t> body ;
+    uint32_t shift{0} ;
 
     while (!shutdown)
     {
-      if (!skip_magic(_queueTty))
+      if (!skip_magic(_queueTty, shift))
         return ;
+      shift = 0 ;
 
       if (!read(_queueTty, header))
         return ;
 
-      if (header.body_size > 2000)
+      if ((header.body_size > MAX_PKT_SIZE) || ((header.pkt_type == LOG_DATA_TYPE_ITS) && (header.body_size == 0)))
         continue ;
 
       if (!read(_queueTty, header.body_size, body))
         return ;
+      // a record is complete only if the next record's magic follows it,
+      // else drop it and resync, starting with the 4 bytes just read
+      for (size_t i = 0 ; i < sizeof(shift) ; ++i)
+      {
+        uint8_t c ;
+        if (!read(_queueTty, c))
+          return ;
+        shift <<= 8 ;
+        shift |= c ;
+      }
+      if (shift != 0xaa5555aa)
+        continue ;
 
       std::cout << "\r\033[2K" << (uint32_t)header.pkt_type << " " << header.timestamp_us << " " << header.body_size ;
       std::cout.flush() ;
