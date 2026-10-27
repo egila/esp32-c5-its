@@ -2,11 +2,11 @@
 #include <cerrno>
 #include <cstdlib>
 
-std::atomic<bool> shutdown(false) ;
+std::atomic<bool> shutdownRequested(false) ;
 
 void signal_handler(int)
 {
-  shutdown = true ;
+  shutdownRequested = true ;
 }
 
 #define MQTT_DEFAULT_ID "esp32-c5-its"
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
       !writer.start())
   {
     exitCode = 1 ;
-    shutdown = true ;
+    shutdownRequested = true ;
   }
 
   reader.stop() ;

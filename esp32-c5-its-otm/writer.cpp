@@ -70,7 +70,7 @@ bool Writer::start()
   {
     std::vector<uint8_t> data ;
 
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       if (!_queueIts.pop(data))
         continue ;
@@ -98,7 +98,7 @@ void Writer::networkLoop()
     if (rc == MOSQ_ERR_SUCCESS)
       continue ;
 
-    if (shutdown)
+    if (shutdownRequested)
     {
       // stop() sends 'offline' and disconnects, do not reconnect
       std::this_thread::sleep_for(std::chrono::milliseconds(100)) ;
@@ -108,11 +108,11 @@ void Writer::networkLoop()
 
     int delay = _reconnectDelay ;
     std::cerr << "mqtt: " << mosqpp::strerror(rc) << ", reconnecting in " << delay << " s" << std::endl ;
-    for (int i = 0 ; (i < delay * 10) && !shutdown ; ++i)
+    for (int i = 0 ; (i < delay * 10) && !shutdownRequested ; ++i)
       std::this_thread::sleep_for(std::chrono::milliseconds(100)) ;
     _reconnectDelay = std::min(delay * 2, 60) ;
 
-    if (!shutdown)
+    if (!shutdownRequested)
       rc = reconnect() ;
   }
 }
@@ -126,7 +126,7 @@ void Writer::on_connect(int rc)
   }
 
   // stop() publishes 'offline' and disconnects, do not go 'online' again
-  if (shutdown)
+  if (shutdownRequested)
     return ;
 
   if (options._mqttTopicStatus.size())

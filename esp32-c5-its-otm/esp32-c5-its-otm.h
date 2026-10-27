@@ -20,7 +20,7 @@
 
 #include "log-data.h"
 
-extern std::atomic<bool> shutdown ;
+extern std::atomic<bool> shutdownRequested ;
 
 struct Options
 {
@@ -73,7 +73,7 @@ bool Queue<T,Size>::pop(T &value) {
     bool success = _cv.wait_for(lock, std::chrono::seconds(1), [this] { return !_queue.empty(); });
     if (!success)
     {
-      if (shutdown)
+      if (shutdownRequested)
         return false ;
       continue ;
     }

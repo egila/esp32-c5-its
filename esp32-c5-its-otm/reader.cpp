@@ -84,11 +84,11 @@ void Reader::reopenPort()
   _port = -1 ;
   _queue.clear() ;
 
-  while (!shutdown)
+  while (!shutdownRequested)
   {
     std::this_thread::sleep_for(std::chrono::seconds(1)) ;
 
-    if (!shutdown && (access(options._ttyName.c_str(), F_OK) == 0) && initPort())
+    if (!shutdownRequested && (access(options._ttyName.c_str(), F_OK) == 0) && initPort())
     {
       std::cerr << "tty " << options._ttyName << " reopened" << std::endl ;
       return ;
@@ -118,7 +118,7 @@ bool Reader::start()
     } ;
 
     uint8_t buff[256];
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       fd_set fds;
       FD_ZERO(&fds);

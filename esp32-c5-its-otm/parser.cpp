@@ -58,7 +58,7 @@ bool Parser::start()
     uint32_t shift{0} ;
     size_t drops{0} ;
 
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       // QueueTty drops bytes when it is full: note its drop count before a
       // search (the magic read after a record is covered by that record)
@@ -135,7 +135,7 @@ bool Parser::start()
   {
     uint32_t count{0} ;
 
-    while (!shutdown)
+    while (!shutdownRequested)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(200)) ;
 
