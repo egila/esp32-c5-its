@@ -1,4 +1,6 @@
 #include "esp32-c5-its-otm.h"
+#include <cerrno>
+#include <cstdlib>
 
 std::atomic<bool> shutdown(false) ;
 
@@ -104,7 +106,16 @@ int main(int argc, char *argv[])
         usage() ;
         return 1 ;
       }
-      options._mqttPort = std::stoul(argv[iArg]) ;
+      const char *value = argv[iArg] ;
+      char *end = nullptr ;
+      errno = 0 ;
+      unsigned long port = std::strtoul(value, &end, 10) ;
+      if ((value[0] < '0') || (value[0] > '9') || *end || errno || (port < 1) || (port > 65535))
+      {
+        usage() ;
+        return 1 ;
+      }
+      options._mqttPort = static_cast<uint32_t>(port) ;
     }
     else if ((arg == "-mi") || (arg == "--mqtt-id"))
     {
