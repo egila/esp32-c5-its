@@ -102,15 +102,17 @@ void sdcard_control_task(void *pvParameters)
           ESP_LOGW(TAG, "fopen %s failed", filename);
           unmount_sdcard() ;
         }
+        else
+        {
+          struct LogData data ;
+          init_version_log_data(&data) ;
+          xQueueSend(sdcard_queue, &data, 0) ;
+          init_info_log_data(&data) ;
+          xQueueSend(sdcard_queue, &data, 0) ;
 
-        struct LogData data ;
-        init_version_log_data(&data) ;
-        xQueueSend(sdcard_queue, &data, 0) ;
-        init_info_log_data(&data) ;
-        xQueueSend(sdcard_queue, &data, 0) ;
-
-        ESP_LOGI(TAG, "sdcard logging start %s", filename) ;
-        sdcard_active = true ;
+          ESP_LOGI(TAG, "sdcard logging start %s", filename) ;
+          sdcard_active = true ;
+        }
       }
       else
       {
@@ -121,9 +123,12 @@ void sdcard_control_task(void *pvParameters)
     {
       if (xSemaphoreTake(logFileMutex, portMAX_DELAY) == pdTRUE)
       {
-        fsync(fileno(logFile)) ;
-        fclose(logFile) ;
-        logFile = NULL ;
+        if (logFile)
+        {
+          fsync(fileno(logFile)) ;
+          fclose(logFile) ;
+          logFile = NULL ;
+        }
         xSemaphoreGive(logFileMutex) ;
       }
       sdcard_active = false ;
