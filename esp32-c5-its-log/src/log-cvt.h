@@ -58,7 +58,10 @@ private:
 
   Vector::BLF::File _blf ;
   bool     _timeFirst ;
+  bool     _timeUtc ;
   uint64_t _timeMeasurementStartUs ;
+  uint64_t _timeOffsetUs ;
+  uint64_t _timeLastUs ;
 } ;
 
 class PcapWriter : public Writer
