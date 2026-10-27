@@ -24,6 +24,8 @@ The development environment is PlatformIO. Mandatory is only the ESP32-C5, optio
  1) Compile
  1) Upload
 
+Alternatively a CI build can be flashed: the GitHub Actions artifact contains ```<env>/firmware.factory.bin``` (bootloader, partition table and app) to be written at 0x0, e.g. ```esptool.py --chip esp32c5 write_flash 0x0 firmware.factory.bin```.
+
 To enable 802.11p communication unofficial espidf framework functions are used, they might be removed in later versions from the IDE.
 
 Logged are all received ITS messages and a timestamp/postion per second. If the optional GPS has a fix it's UTC time and position, else it's the ESP's system time.
