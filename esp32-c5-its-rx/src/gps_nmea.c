@@ -88,7 +88,7 @@ void gps_nmea_read_task(void *pvParameters)
           // $GPGGA,202530.00,5109.0262,N,11401.8407,W,5,40,0.5,1097.36,M,-17.00,M,18,TSTR*61
           size_t nComma = 0 ;
           size_t comma[20] ;
-          for (size_t i = 6 ; (i < line_idx) && (nComma < sizeof(comma)) ; ++i)
+          for (size_t i = 6 ; (i < line_idx) && (nComma < sizeof(comma) / sizeof(comma[0])) ; ++i)
           {
             if (line_buffer[i] == ',')
             {
@@ -170,7 +170,7 @@ void gps_nmea_read_task(void *pvParameters)
           // $GNRMC,204520.00,A,5109.0262239,N,11401.8407338,W,0.004,102.3,130522,0.0,E,D*3B
           size_t nComma = 0 ;
           size_t comma[20] ;
-          for (size_t i = 6 ; (i < line_idx) && (nComma < sizeof(comma)) ; ++i)
+          for (size_t i = 6 ; (i < line_idx) && (nComma < sizeof(comma) / sizeof(comma[0])) ; ++i)
           {
             if (line_buffer[i] == ',')
             {
