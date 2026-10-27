@@ -355,9 +355,11 @@ void app_main()
       info_log_data("esp chip rev: %d.%d\n", chip_info.revision / 100, chip_info.revision % 100);
     }
     {
-      uint32_t flash_size;
-      esp_flash_get_size(NULL, &flash_size) ;
-      info_log_data("esp flash: %lu MB\n", flash_size / (1024 * 1024));
+      uint32_t flash_size = 0;
+      if (esp_flash_get_physical_size(NULL, &flash_size) == ESP_OK)
+        info_log_data("esp flash: %" PRIu32 " MB\n", flash_size / (1024 * 1024));
+      else
+        info_log_data("esp flash: unknown\n");
     }
     {
       uint8_t mac[6];
