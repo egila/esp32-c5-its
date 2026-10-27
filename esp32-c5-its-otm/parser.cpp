@@ -115,6 +115,7 @@ bool Parser::start()
       std::cout
         << "\nInfo:\n"
         << std::string((char*)body.data(), body.size()) ;
+        std::cout.flush() ;
         break ;
       case LOG_DATA_TYPE_VERSION:
         {
@@ -125,11 +126,21 @@ bool Parser::start()
             << "\nVersion:\n"
             << "Log: " << (int) version.logVersion << "\n"
             << "Prg: " << (int) version.prgVerMaj << "." << (int) version.prgVerMin << "." << (int) version.prgVerRev << "\n" ;
+          std::cout.flush() ;
         }
         break ;
       }
     }
    }) ;
+
+  // the progress line is for a terminal only, not for the journal or a file;
+  // without its ticker nothing flushes stdout, so flush the start-up lines
+  // here and stdout after each Info and Version block
+  if (!isatty(STDOUT_FILENO))
+  {
+    std::cout.flush() ;
+    return true ;
+  }
 
   _ticker = std::thread([this]()
   {
