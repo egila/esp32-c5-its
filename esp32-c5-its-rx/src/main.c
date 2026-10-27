@@ -150,7 +150,7 @@ QueueHandle_t usb_queue;
 
 void usb_transmitter_task(void *)
 {
-  struct LogData data;
+  static struct LogData data; // single task; 2 KB is too much for its stack
   static const uint8_t magic[4] = {0xaa, 0x55, 0x55, 0xaa};
 
   usb_serial_jtag_driver_config_t usb_config = {
@@ -220,7 +220,7 @@ void its_log_data(void *buf, wifi_promiscuous_pkt_type_t type)
   {
     if (pkt->rx_ctrl.sig_len <= MAX_PKT_SIZE)
     {
-      struct LogData data;
+      static struct LogData data; // Wi-Fi task only; 2 KB is too much for its stack
       data.header.pkt_type = LOG_DATA_TYPE_ITS;
       data.header.reserved = 0;
       data.header.body_size = pkt->rx_ctrl.sig_len;
