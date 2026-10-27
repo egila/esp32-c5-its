@@ -66,7 +66,7 @@ A GPS receiver can be connected for UTC time and position. The GPS module must p
 
 ### SD Card (optional)
 
-An SD card can be connected for logging data. Logging to SD card is started/stopped by pressing the ESP's boot button. The log filename is "log-timestamp.dat" with timestamp in seconds. Make sure to stop logging before switching off.
+An SD card can be connected for logging data. Logging to SD card is started/stopped by pressing the ESP's boot button. The log filename is "log-timestamp.dat" with timestamp in seconds. If that file already exists, the first free name from "log-timestamp-1.dat" to "log-timestamp-99.dat" is used. An existing file is never overwritten; if all these names are taken, nothing is logged. Make sure to stop logging before switching off.
 
 | ESP32-C5 | SD card |
 |----------|---------|
