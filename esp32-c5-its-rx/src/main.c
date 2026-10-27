@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -138,6 +139,11 @@ static void led_init()
 
 #endif
 
+static atomic_uint usb_queue_full_count ;
+#if defined(SDCARD)
+static atomic_uint sdcard_queue_full_count ;
+#endif
+
 // usb
 
 QueueHandle_t usb_queue;
@@ -158,9 +164,36 @@ void usb_transmitter_task(void *)
   init_info_log_data(&data) ;
   xQueueSend(usb_queue, &data, 0) ;
 
+  unsigned usb_queue_full_reported = 0 ;
+#if defined(SDCARD)
+  unsigned sdcard_queue_full_reported = 0 ;
+#endif
+  int64_t next_report_time = 0 ;
+
   while (1)
   {
-    if (xQueueReceive(usb_queue, &data, portMAX_DELAY))
+    // report records dropped by log_data(), at most once per second
+    int64_t current_time = esp_timer_get_time() ;
+    if (current_time >= next_report_time)
+    {
+      next_report_time = current_time + 1000000 ; // us
+      unsigned count = atomic_load(&usb_queue_full_count) ;
+      if (count != usb_queue_full_reported)
+      {
+        ESP_LOGW(TAG, "usb queue full: %u records dropped (%u total)", count - usb_queue_full_reported, count) ;
+        usb_queue_full_reported = count ;
+      }
+#if defined(SDCARD)
+      count = atomic_load(&sdcard_queue_full_count) ;
+      if (count != sdcard_queue_full_reported)
+      {
+        ESP_LOGW(TAG, "sdcard queue full: %u records dropped (%u total)", count - sdcard_queue_full_reported, count) ;
+        sdcard_queue_full_reported = count ;
+      }
+#endif
+    }
+
+    if (xQueueReceive(usb_queue, &data, pdMS_TO_TICKS(1000)))
     {
       if (usb_serial_jtag_is_connected())
       {
@@ -236,10 +269,11 @@ void init_info_log_data(struct LogData *data)
 
 void log_data(struct LogData *data)
 {
+  // Wi-Fi and esp_timer task context: never log here, the usb task reports the drop counts
   if (usb_serial_jtag_is_connected() &&
       (xQueueSend(usb_queue, data, 0) != pdTRUE))
   {
-    ESP_LOGW(TAG, "usb queue full");
+    atomic_fetch_add(&usb_queue_full_count, 1) ;
   }
 
 #if defined(SDCARD)
@@ -247,7 +281,7 @@ void log_data(struct LogData *data)
       (data->header.pkt_type != LOG_DATA_TYPE_TIME) &&
       (xQueueSend(sdcard_queue, data, 0) != pdTRUE))
   {
-    ESP_LOGW(TAG, "sdcard queue full");
+    atomic_fetch_add(&sdcard_queue_full_count, 1) ;
   }
 #endif
 
