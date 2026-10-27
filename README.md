@@ -127,7 +127,18 @@ options
 
 ## Log File Format
 
-Integer are stored little endian (ESP32 native).
+Records are byte-packed (no padding) and integers are stored little endian (ESP32 native). The struct below is an overview, the reference is [esp32-c5-its-rx/include/log-data.h](esp32-c5-its-rx/include/log-data.h).
+
+In a USB log each record is magic + header + body, with the magic bytes `AA 55 55 AA`. In an SD card log each record is header + body, without magic. The body is always `body_size` bytes long, so a decoder advances by `body_size` after the header, also for unknown record types. In a USB log a decoder resynchronises by searching for the next magic, e.g. if the capture does not start at a record boundary or bytes were lost.
+
+The header is 12 bytes (Python `struct.Struct('<BBHq')`), offsets are from the start of the header:
+
+| offset | size | type   | field        |
+| ------ | ---- | ------ | ------------ |
+| 0      | 1    | uint8  | pkt_type     |
+| 1      | 1    | uint8  | reserved     |
+| 2      | 2    | uint16 | body_size    |
+| 4      | 8    | int64  | timestamp_us |
 
 ```c
 
@@ -138,8 +149,8 @@ struct
   {
     uint8_t  pkt_type;     // 0 Time / 1 ITS / 2 GPS / 254 Info / 255 Version
     uint8_t  reserved;     // 0
-    uint16_t body_size;    // body size  (Time 0, ITS var, GPS 20, Version 4, Info var)
-    uint64_t timestamp_us; // UTC time in µs after GPS fix, else ESP system time in µs
+    uint16_t body_size;    // body size  (Time 0, ITS 1..2000, GPS 24, Version 4, Info variable)
+    int64_t  timestamp_us; // UTC time in µs after GPS fix, else ESP system time in µs
   } header ;
 
   union
@@ -150,13 +161,13 @@ struct
     } its;
     struct
     {
-      int32_t  latitude;    // °, * 10^7
-      int32_t  longitude;   // °, * 10^7
-      int32_t  altitudeWGS; // m, * 10
-      int32_t  altitudeMSL; // m, * 10
-      uint16_t speed;       // m/s * 100
-      int16_t  heading;     // °, * 10
-    } gps;
+      int32_t  latitude;    // °, * 1e7
+      int32_t  longitude;   // °, * 1e7
+      int32_t  altitudeWGS; // m, * 1e3 (mm)
+      int32_t  altitudeMSL; // m, * 1e3 (mm)
+      int32_t  speed;       // m/s, * 1e2 (cm/s)
+      int32_t  heading;     // °, * 1e5
+    } gps;                  // 24 bytes (Python struct.Struct('<6i'))
     struct
     {
       uint8_t logVersion;   // 1
