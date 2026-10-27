@@ -32,7 +32,7 @@ static void led_off_timer_cb(void *arg)
 {
   uint8_t state = 0;
 
-#if defined(GSP)
+#if defined(GPS)
   if (gps_time_active)
     state |= 1 ;
   if (gps_pos_active)
@@ -42,7 +42,7 @@ static void led_off_timer_cb(void *arg)
   switch (state)
   {
   case 1:  led_strip_set_pixel(led_strip, 0, 0, 0, 2); break; // time: blue
-  case 2:  led_strip_set_pixel(led_strip, 0, 0, 2, 0); break; // pos:  red
+  case 2:  led_strip_set_pixel(led_strip, 0, 2, 0, 0); break; // pos:  red
   case 3:  led_strip_set_pixel(led_strip, 0, 0, 2, 0); break; // time&pos: green
   default: led_strip_set_pixel(led_strip, 0, 0, 0, 0); break; // off
   }
