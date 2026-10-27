@@ -96,8 +96,9 @@ options:
   -b    vector blf file
   -u    source is usb log with magic bytes (default sd log w/o magic bytes)
 without -p or -b only the record counts are printed
-exit status 1 if a file cannot be opened, read, converted or written
-or contains no log records, else 0
+exit status 1 if a log cannot be opened, read or converted, if the
+output file cannot be created or if a log contains no records, else 0
+write errors on the output file, such as a full disk, are not detected
 ```
 
 ### Recording a USB log
