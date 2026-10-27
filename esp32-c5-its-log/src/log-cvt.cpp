@@ -113,8 +113,9 @@ void usage()
     << "  -b    vector blf file\n"
     << "  -u    source is usb log with magic bytes (default sd log w/o magic bytes)\n"
     << "without -p or -b only the record counts are printed\n"
-    << "exit status 1 if a file cannot be opened, read, converted or written\n"
-    << "or contains no log records, else 0\n" ;
+    << "exit status 1 if a log cannot be opened, read or converted, if the\n"
+    << "output file cannot be created or if a log contains no records, else 0\n"
+    << "write errors on the output file, such as a full disk, are not detected\n" ;
 }
 
 int main(int argc, char *argv[])
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
 
     if (ferror(log) || !feof(log))
     {
-      std::cerr << "conversion of " << logName << " stopped at offset " << ftell(log) << "\n" ;
+      std::cerr << "conversion of " << logName << " stopped at offset " << (long long) ftello(log) << "\n" ;
       rc = 1 ;
     }
     else if (count.time + count.its + count.gps + count.info + count.version == 0)
