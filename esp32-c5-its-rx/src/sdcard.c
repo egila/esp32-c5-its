@@ -143,13 +143,20 @@ void sdcard_control_task(void *pvParameters)
         else
         {
           struct LogData data ;
-          init_version_log_data(&data) ;
-          xQueueSend(sdcard_queue, &data, 0) ;
-          init_info_log_data(&data) ;
-          xQueueSend(sdcard_queue, &data, 0) ;
+          if (xSemaphoreTake(logFileMutex, portMAX_DELAY) == pdTRUE)
+          {
+            // the writer clears the flag on a write error: set it before the
+            // writer can handle a record, after VERSION and INFO so they come
+            // first in the file, and only while the file is open
+            init_version_log_data(&data) ;
+            xQueueSend(sdcard_queue, &data, 0) ;
+            init_info_log_data(&data) ;
+            xQueueSend(sdcard_queue, &data, 0) ;
+            sdcard_active = (logFile != NULL) ;
+            xSemaphoreGive(logFileMutex) ;
+          }
 
           ESP_LOGI(TAG, "sdcard logging start %s", filename) ;
-          sdcard_active = true ;
         }
       }
       else
