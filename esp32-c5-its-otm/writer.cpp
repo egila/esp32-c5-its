@@ -1,4 +1,5 @@
 #include "esp32-c5-its-otm.h"
+#include <pthread.h>
 
 const std::string statusOnline("online") ;
 const std::string statusOffline("offline") ;
@@ -54,6 +55,10 @@ void Writer::networkLoop()
   // some errors (e.g. a TLS connection closed without close_notify)
   int rc = MOSQ_ERR_SUCCESS ;
 
+  // stop() may cancel this thread, but only while it is in reconnect()
+  int cancelState ;
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelState) ;
+
   while (!_loopStop)
   {
     if (rc == MOSQ_ERR_SUCCESS)
@@ -70,13 +75,19 @@ void Writer::networkLoop()
     }
 
     int delay = _reconnectDelay ;
-    std::cerr << "mqtt: " << mosqpp::strerror(rc) << ", reconnecting in " << delay << " s" << std::endl ;
+    std::cerr << "\nmqtt: " << mosqpp::strerror(rc) << ", reconnecting in " << delay << " s" << std::endl ;
     for (int i = 0 ; (i < delay * 10) && !shutdown ; ++i)
       std::this_thread::sleep_for(std::chrono::milliseconds(100)) ;
     _reconnectDelay = std::min(delay * 2, 60) ;
 
     if (!shutdown)
+    {
+      // connect() waits until the kernel gives up (about 127 s on Linux) if
+      // the broker's packets are dropped, stop() cancels the thread there
+      pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &cancelState) ;
       rc = reconnect() ;
+      pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancelState) ;
+    }
   }
 }
 
@@ -134,6 +145,10 @@ void Writer::stop()
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
   _loopStop = true ;
   if (_loopThread.joinable())
+  {
+    // as loop_stop(true) did, do not wait for a reconnect() stuck in connect()
+    pthread_cancel(_loopThread.native_handle()) ;
     _loopThread.join() ;
+  }
   mosqpp::lib_cleanup() ;
 }
