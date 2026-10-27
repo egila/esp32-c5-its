@@ -279,7 +279,10 @@ int main(int argc, char *argv[])
 
     log = seekable(log, logName) ;
     if (!log)
-      return 1 ;
+    {
+      rc = 1 ;
+      continue ;
+    }
 
     std::unique_ptr<Writer> writer ;
     switch (type)
