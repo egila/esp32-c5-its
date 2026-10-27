@@ -171,7 +171,12 @@ void sdcard_control_task(void *pvParameters)
       unmount_sdcard() ;
     }
 
-    vTaskDelay(pdMS_TO_TICKS(200));
+    // wait until the button is released (high for 5 consecutive 10 ms polls)
+    for (int high = 0 ; high < 5 ; )
+    {
+      vTaskDelay(pdMS_TO_TICKS(10));
+      high = gpio_get_level(SDCARD_BUTTON_GPIO) ? high + 1 : 0 ;
+    }
     ulTaskNotifyTake(pdTRUE, 0);
   }
 }
