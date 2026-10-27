@@ -87,7 +87,7 @@ bool record_complete(FILE *log, off_t start, const Header &header, const std::ve
   } ;
   uint8_t next[4 + sizeof(Header) - 1] ; // a magic and header may start in the last body byte
   off_t end = ftello(log) ;
-  if (end < 0) // not seekable, e.g. a pipe: cannot look ahead
+  if (end < 0) // position unknown: cannot look ahead
     return true ;
   size_t n = fread(next, 1, sizeof(next), log) ;
 
