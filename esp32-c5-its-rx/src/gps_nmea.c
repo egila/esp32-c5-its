@@ -173,8 +173,8 @@ void gps_nmea_read_task(void *pvParameters)
             {
               if (comma[1] + 1 != comma[2])
               {
-                float lat = atof(line_buffer + comma[1] + 1) ;
-                gps_data.latitude = (int32_t)((trunc(lat / 100.0) + (fmod(lat, 100.0) / 60.0)) * 1e7) ;
+                double lat = atof(line_buffer + comma[1] + 1) ;
+                gps_data.latitude = (int32_t)lround((trunc(lat / 100.0) + (fmod(lat, 100.0) / 60.0)) * 1e7) ;
               }
 
               if (comma[2] + 1 != comma[3])
@@ -186,8 +186,8 @@ void gps_nmea_read_task(void *pvParameters)
 
               if (comma[3] + 1 != comma[4])
               {
-                float lon = atof(line_buffer + comma[3] + 1) ;
-                gps_data.longitude = (int32_t)((trunc(lon / 100) + (fmod(lon, 100.0) / 60.0)) * 1e7);
+                double lon = atof(line_buffer + comma[3] + 1) ;
+                gps_data.longitude = (int32_t)lround((trunc(lon / 100) + (fmod(lon, 100.0) / 60.0)) * 1e7);
               }
 
               if (comma[4] + 1 != comma[5])
