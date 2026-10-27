@@ -453,6 +453,9 @@ bool gps_ubx_init()
   if (!gps_ubx_baudrate_try_all(&frame))
   {
     ESP_LOGW(TAG, "get baudrate failed") ;
+    ESP_ERROR_CHECK(uart_wait_tx_done(UART_PORT_NUM, pdMS_TO_TICKS(100))) ;
+    ESP_ERROR_CHECK(uart_set_baudrate(UART_PORT_NUM, 9600)) ;
+    ESP_ERROR_CHECK(uart_flush(UART_PORT_NUM)) ;
     info_log_data("ubx: not found\n") ;
     return false ;
   }
@@ -461,13 +464,14 @@ bool gps_ubx_init()
 
   if (frame.cfg_prt.baudRate != 115200)
   {
+    uint32_t found_baud = frame.cfg_prt.baudRate ;
     ESP_LOGI(TAG, "set baudrate %d", frame.cfg_prt.baudRate) ;
     frame.cfg_prt.baudRate = 115200 ;
     gps_ubx_cmd_set(&frame) ;
     if (!gps_ubx_baudrate_try(115200, &frame))
     {
       ESP_LOGW(TAG, "set baudrate failed") ;
-      gps_ubx_baudrate_try(9600, &frame) ;
+      gps_ubx_baudrate_try(found_baud, &frame) ;
       info_log_data("ubx: not found\n") ;
       return false ;
     }
