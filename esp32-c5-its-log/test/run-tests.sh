@@ -34,10 +34,23 @@ check 2/0/1/1 unknown-type.usb -u
 check 21/0/1/1 cut-record.usb -u
 check 3/0/2/2 cut-record-end.usb -u
 
-# a fifo cannot be seeked: its records are read without look-ahead
-mkfifo "$tmp/fifo.usb"
-cat "$tmp/clean.usb" > "$tmp/fifo.usb" &
-check 10/1/1/1 fifo.usb -u
+# a fifo or pipe cannot be seeked: log-cvt converts a copy of it, so
+# resync, cut records and offsets work as for files
+for log in clean overlap cut-record cut-record-end ; do
+  mkfifo "$tmp/$log.fifo"
+  cat "$tmp/$log.usb" > "$tmp/$log.fifo" &
+done
+check 10/1/1/1 clean.fifo -u
+check 10/0/1/1 overlap.fifo -u
+check 21/0/1/1 cut-record.fifo -u
+check 3/0/2/2 cut-record-end.fifo -u
+
+if cat "$tmp/overlap.usb" | "$cvt" -u /dev/stdin 2>&1 >/dev/null | grep -q 'invalid record header at offset 2' ; then
+  echo "ok    overlap.usb piped: invalid record header at offset 2"
+else
+  echo "FAIL  overlap.usb piped: no 'invalid record header at offset 2'"
+  fail=1
+fi
 
 # a usb log read as sd log stops at the first header
 if "$cvt" "$tmp/clean.usb" 2>&1 >/dev/null | grep -q 'invalid record header at offset 0' ; then
