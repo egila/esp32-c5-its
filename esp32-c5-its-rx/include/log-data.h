@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define LOG_DATA_VERSION 1
 
@@ -45,7 +46,7 @@ struct Header
 {
   uint8_t  pkt_type;     // log_data_type_t
   uint8_t  reserved;     // 0
-  uint16_t body_size;    // body size  (Time 0, ITS var, GPS 21, Info 6)
+  uint16_t body_size;    // body size  (Time 0, ITS 1..MAX_PKT_SIZE, GPS 24, Version 4, Info strlen)
   int64_t  timestamp_us; // UTC time in µs after GPS fix, else ESP system time in µs
 } ;
 
@@ -64,3 +65,19 @@ struct LogData
 } ;
 
 #pragma pack(pop)
+
+// Compile-time checks of the binary log layout (USB stream and SD files).
+// Any change here is a log format change: bump LOG_DATA_VERSION and update
+// the README, the bridge (esp32-c5-its-otm) and log-cvt (esp32-c5-its-log).
+#if defined(__cplusplus)
+#define LOG_DATA_ASSERT(cond, msg) static_assert(cond, msg)
+#else
+#define LOG_DATA_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
+
+LOG_DATA_ASSERT(sizeof(struct Header) == 12, "log format: struct Header must be 12 bytes") ;
+LOG_DATA_ASSERT(offsetof(struct Header, body_size) == 2, "log format: Header.body_size must be at offset 2") ;
+LOG_DATA_ASSERT(offsetof(struct Header, timestamp_us) == 4, "log format: Header.timestamp_us must be at offset 4") ;
+LOG_DATA_ASSERT(sizeof(struct Gps) == 24, "log format: struct Gps must be 24 bytes") ;
+LOG_DATA_ASSERT(sizeof(struct Version) == 4, "log format: struct Version must be 4 bytes") ;
+LOG_DATA_ASSERT(MAX_PKT_SIZE <= UINT16_MAX, "log format: MAX_PKT_SIZE must fit in uint16_t body_size") ;
