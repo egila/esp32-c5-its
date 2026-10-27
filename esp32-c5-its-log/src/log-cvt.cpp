@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
+#include <cerrno>
 
 #include <iostream>
 #include <vector>
@@ -139,6 +141,33 @@ bool log_cvt(FILE *log, bool isUsbLog, std::unique_ptr<Writer> &writer, ContentC
   return true ;
 }
 
+// resync and record offsets need a seekable log: copy a log that cannot
+// be seeked, e.g. a pipe, to a temporary file and convert that
+FILE *seekable(FILE *log, const std::string &logName)
+{
+  if (ftello(log) >= 0)
+    return log ;
+
+  FILE *copy = tmpfile() ;
+  if (copy)
+  {
+    std::vector<uint8_t> buf(65536) ;
+    size_t n ;
+    while (((n = fread(buf.data(), 1, buf.size(), log)) > 0) &&
+           (fwrite(buf.data(), 1, n, copy) == n))
+      ;
+  }
+  if (!copy || ferror(log) || ferror(copy) || (fseeko(copy, 0, SEEK_SET) != 0))
+  {
+    std::cerr << "copy of log " << logName << " to a temporary file failed: " << strerror(errno) << "\n" ;
+    if (copy)
+      fclose(copy) ;
+    copy = nullptr ;
+  }
+  fclose(log) ;
+  return copy ;
+}
+
 void usage()
 {
   std::cout
@@ -188,6 +217,10 @@ int main(int argc, char *argv[])
       std::cerr << "open log " << logName << " failed\n" ;
       continue ;
     }
+
+    log = seekable(log, logName) ;
+    if (!log)
+      return 1 ;
 
     std::unique_ptr<Writer> writer ;
     switch (type)
